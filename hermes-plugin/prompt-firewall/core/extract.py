@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
 TAG_LO, TAG_HI = 0xE0000, 0xE007F
-ZERO_WIDTH = {"​", "‌", "‍", "⁠", "﻿", "᠎"}
+ZERO_WIDTH = {"\u200b", "\u200c", "\u200d", "\u2060", "\ufeff", "\u180e"}  # written as escapes: never put invisible characters in source
 BIDI = {chr(c) for c in range(0x202A, 0x202F)} | {chr(c) for c in range(0x2066, 0x206A)}
 B64_RUN = re.compile(r"(?<![A-Za-z0-9+/=])[A-Za-z0-9+/]{40,}={0,2}(?![A-Za-z0-9+/=])")
 HIDDEN_STYLE = re.compile(
@@ -213,7 +213,8 @@ def html_to_text(html: str, out: Extracted) -> str:
 
 # OCR engines, tried in order by FIREWALL_OCR=auto (or pin one: apple | tesseract | rapidocr | none).
 # apple: macOS Vision via ocrmac. tesseract: the `tesseract` CLI (one system package on any OS).
-# rapidocr: PaddleOCR models on onnxruntime (pip install rapidocr_onnxruntime). Each returns lines.
+# rapidocr: PaddleOCR models on onnxruntime, used only if the rapidocr_onnxruntime package is present.
+# Each engine returns a list of text lines.
 OCR_TIMEOUT = 20
 
 
@@ -392,9 +393,13 @@ def extract_image(data: bytes) -> Extracted:
     return out
 
 
+# File signatures: PNG, GIF, WebP (RIFF container) and JPEG.
+IMAGE_SIGNATURES = (bytes.fromhex("89504e47"), b"GIF8", b"RIFF", bytes.fromhex("ffd8"))
+
+
 def extract(content: str | bytes, kind: str = "auto") -> Extracted:
     if isinstance(content, bytes):
-        if kind == "image" or content[:4] in (b"\x89PNG", b"GIF8", b"RIFF") or content[:2] == b"\xff\xd8":
+        if kind == "image" or content.startswith(IMAGE_SIGNATURES):
             return extract_image(content)
         content = content.decode("utf-8", "replace")
     out = Extracted(text="")
