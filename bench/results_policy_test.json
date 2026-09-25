@@ -1,0 +1,140 @@
+{
+ "bipia_email [benign]": {
+  "safe": 47,
+  "suspicious": 2,
+  "injection": 1
+ },
+ "bipia_email [ATTACK]": {
+  "safe": 120,
+  "suspicious": 29,
+  "injection": 1
+ },
+ "deepset [ATTACK]": {
+  "injection": 13,
+  "suspicious": 10,
+  "safe": 37
+ },
+ "deepset [benign]": {
+  "safe": 56
+ },
+ "gandalf [ATTACK]": {
+  "injection": 66,
+  "safe": 20,
+  "suspicious": 26
+ },
+ "nostr [benign]": {
+  "suspicious": 14,
+  "safe": 132,
+  "injection": 4
+ },
+ "carrier/html_hidden [ATTACK]": {
+  "suspicious": 5,
+  "injection": 1
+ },
+ "carrier/html_hidden [benign]": {
+  "safe": 4,
+  "suspicious": 2
+ },
+ "carrier/html_comment [ATTACK]": {
+  "suspicious": 5,
+  "injection": 1
+ },
+ "carrier/html_comment [benign]": {
+  "safe": 6
+ },
+ "carrier/unicode_tags [ATTACK]": {
+  "injection": 3,
+  "suspicious": 3
+ },
+ "carrier/unicode_tags [benign]": {
+  "safe": 1,
+  "suspicious": 5
+ },
+ "carrier/zero_width [ATTACK]": {
+  "suspicious": 5,
+  "injection": 1
+ },
+ "carrier/zero_width [benign]": {
+  "suspicious": 6
+ },
+ "carrier/base64 [ATTACK]": {
+  "suspicious": 2,
+  "injection": 4
+ },
+ "carrier/base64 [benign]": {
+  "safe": 5,
+  "suspicious": 1
+ },
+ "carrier/img_visible [ATTACK]": {
+  "injection": 3,
+  "safe": 2,
+  "suspicious": 1
+ },
+ "carrier/img_visible [benign]": {
+  "safe": 4,
+  "suspicious": 2
+ },
+ "carrier/img_lowcontrast [ATTACK]": {
+  "suspicious": 3,
+  "safe": 1,
+  "injection": 2
+ },
+ "carrier/img_lowcontrast [benign]": {
+  "suspicious": 5,
+  "safe": 1
+ },
+ "carrier/img_tiny [ATTACK]": {
+  "injection": 2,
+  "suspicious": 4
+ },
+ "carrier/img_tiny [benign]": {
+  "safe": 5,
+  "suspicious": 1
+ },
+ "carrier/jpeg_exif [ATTACK]": {
+  "safe": 3,
+  "injection": 3
+ },
+ "carrier/jpeg_exif [benign]": {
+  "safe": 6
+ },
+ "carrier/jpeg_comment [ATTACK]": {
+  "suspicious": 1,
+  "injection": 4,
+  "safe": 1
+ },
+ "carrier/jpeg_comment [benign]": {
+  "safe": 6
+ },
+ "carrier/jpeg_xmp [ATTACK]": {
+  "suspicious": 2,
+  "injection": 2,
+  "safe": 2
+ },
+ "carrier/jpeg_xmp [benign]": {
+  "safe": 6
+ },
+ "carrier/jpeg_trailing [ATTACK]": {
+  "suspicious": 4,
+  "injection": 2
+ },
+ "carrier/jpeg_trailing [benign]": {
+  "suspicious": 6
+ },
+ "carrier/png_text [ATTACK]": {
+  "safe": 2,
+  "injection": 2,
+  "suspicious": 2
+ },
+ "carrier/png_text [benign]": {
+  "safe": 6
+ },
+ "carrier/plain_photo [benign]": {
+  "safe": 6
+ },
+ "web_page [benign]": {
+  "suspicious": 6,
+  "safe": 1,
+  "injection": 3
+ }
+}

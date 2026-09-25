@@ -1,0 +1,22 @@
+name: prompt-firewall
+version: "0.2.0"
+description: "Scan untrusted tool results (web, MCP, email, files, images) for prompt injection before they enter the model's context. Local extraction and OCR, scoring by Jev (Venice Decisions API)."
+author: "hermes-firewall contributors"
+kind: standalone
+provides_hooks:
+  - pre_gateway_dispatch
+optional_env:
+  - PROMPT_FIREWALL_VENICE_KEY_FILE  # file holding a Venice API key (recommended: a dedicated key)
+  - PROMPT_FIREWALL_VENICE_KEY       # or the key itself; falls back to VENICE_API_KEY
+  - PROMPT_FIREWALL_WARN_ONLY        # "1" = never block, banner only (recommended first week)
+  - PROMPT_FIREWALL_ON_ERROR         # "open" (default): pass content through when scanning fails; "closed": withhold
+  - PROMPT_FIREWALL_BREAKER_SECONDS  # after a scanning failure, skip scanning this long (default 60)
+  - PROMPT_FIREWALL_TIMEOUT          # seconds per scanner request (default 5)
+  - FIREWALL_OCR                     # auto (default) | apple | tesseract | rapidocr | none
+  - PROMPT_FIREWALL_GATEWAY          # "1" = also scan inbound chat from non-owners (off by default)
+  - PROMPT_FIREWALL_OWNER_IDS        # comma-separated gateway user ids never scanned
+  - PROMPT_FIREWALL_BACKEND          # jev (default) | service (self-hosted firewall/ service)
+  - PROMPT_FIREWALL_URL              # service backend URL
+  - PROMPT_FIREWALL_TOKEN            # service backend bearer token
+  - PROMPT_FIREWALL_OCR_URL          # optional service used for OCR when no local engine exists
+  - PROMPT_FIREWALL_DISABLE          # any value = plugin does nothing

@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+decision-tools/
+bench/data/
+bench/corpus/
+private/
+bench/scores/*_ocr_*.jsonl
+*.bak*
+.pytest_cache/

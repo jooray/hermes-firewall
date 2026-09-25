@@ -1,0 +1,26 @@
+[project]
+name = "hermes-firewall"
+version = "0.1.0"
+description = "Prompt-injection scanning service: reveal hidden content (HTML, Unicode, base64, image OCR and metadata), score it with one model (Laya, SemIf or Jev)"
+requires-python = ">=3.11,<3.14"
+license = "MIT"
+dependencies = [
+  "laya-mlx>=0.1",
+  "beautifulsoup4>=4.12",
+  "pillow>=10",
+  "ocrmac>=1.0; sys_platform == 'darwin'",
+]
+
+[project.optional-dependencies]
+# SemIf backend (frozen Qwen3.5-4B option logits). Pinned to the revision decision-tools uses.
+semif = ["semif-phase1[mlx] @ git+https://github.com/TheoLeeCJ/SemIf@1f2dea3e25379f9dfc98cb83c324f00ab5deda37"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[project.scripts]
+hermes-firewall = "hermes_firewall.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

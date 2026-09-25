@@ -1,0 +1,8 @@
+[project]
+name = "hermes-firewall-bench"
+version = "0.1.0"
+requires-python = ">=3.11,<3.14"
+dependencies = ["pandas", "pyarrow", "pillow", "beautifulsoup4", "hermes-firewall", "transformers>=4.45", "torch", "scikit-learn"]
+
+[tool.uv.sources]
+hermes-firewall = { path = "../firewall", editable = true }

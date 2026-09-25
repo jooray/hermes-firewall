@@ -1,0 +1,37 @@
+{
+ "bipia": {
+  "semif": 0.976,
+  "laya": 0.54,
+  "deberta": 0.477
+ },
+ "deepset": {
+  "semif": 0.984,
+  "laya": 0.877,
+  "deberta": 0.901
+ },
+ "gandalf": {
+  "semif": 0.979,
+  "laya": 0.914,
+  "deberta": 0.999
+ },
+ "carrier_text": {
+  "semif": 0.976,
+  "laya": 0.936,
+  "deberta": 0.833
+ },
+ "carrier_image": {
+  "semif": 0.931,
+  "laya": 0.894,
+  "deberta": 0.763
+ },
+ "att_vs_nostr": {
+  "semif": 0.929,
+  "laya": 0.77,
+  "deberta": 0.841
+ },
+ "all": {
+  "semif": 0.94,
+  "laya": 0.787,
+  "deberta": 0.814
+ }
+}
