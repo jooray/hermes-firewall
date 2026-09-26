@@ -1,64 +1,71 @@
-"""Jev (TypeSafe System One) via Venice /api/v1/decisions, same 7 questions as Laya, extracted text.
-Resumable; 4 concurrent requests. Needs VENICE_API_KEY."""
-import json, os, sys, time, urllib.request, urllib.error
+"""Jev (TypeSafe System One) via Venice /api/v1/decisions, scored through the plugin's own client
+(hermes_firewall.jev_detector.JevDetector): same questions in one request, same chunking, same
+handling of HTTP 500. What is measured is what is deployed.
+
+    uv run python score_jev.py [--questions q1,q2] [--tag NAME] [split ...]
+
+Default questions: the ones in policy-jev.json; default tag: jev_deployed. Output rows carry the
+sha256 of the scored text. A rerun skips rows whose id and sha match and retries everything else,
+including rows that changed and rows that failed. A row that cannot be scored is written as
+{"id", "sha", "error"}: never as made-up scores.
+"""
+import argparse
+import hashlib
+import json
+import os
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
-sys.path.insert(0, "../firewall/src")
-from hermes_firewall.laya_detector import QUESTIONS
+from importlib.resources import files
 
-URL = "https://api.venice.ai/api/v1/decisions"
-KEY = os.environ["VENICE_API_KEY"]
-MAX_CHARS = 90_000  # state limit is 32k tokens
+from hermes_firewall.jev_detector import JevDetector
 
-def p_yes(ans):
-    if ans["type"] == "noul":
-        return float(ans["noul"])
-    if ans["type"] == "choice":
-        return float(ans["probabilities"].get("injection", 0.0))
-    pr = ans["probabilities"]
-    return float(pr[str(max(int(k) for k in pr))])
+ap = argparse.ArgumentParser()
+ap.add_argument("--questions", help="comma-separated; default: policy-jev.json")
+ap.add_argument("--tag", default="jev_deployed")
+ap.add_argument("splits", nargs="*", default=["test", "dev"])
+args = ap.parse_args()
+qs = args.questions.split(",") if args.questions else \
+    json.loads(files("hermes_firewall").joinpath("policy-jev.json").read_text())["questions"]
+det = JevDetector(os.environ["VENICE_API_KEY"], questions=qs, timeout=20, attempts=5, workers=2, max_wait=90)
 
-def call(text):
-    res = call_one(text)
-    if res == "server_error" and len(text) > 3000:
-        # Jev answers HTTP 500 "Inference processing failed" on some long pages; fall back to
-        # 3k-char chunks and take the max per question, as a production client would.
-        from hermes_firewall.laya_detector import chunk_text
-        parts = [call_one(c) for c in chunk_text(text, 3000, 200)]
-        if all(isinstance(p, dict) for p in parts):
-            return {q: max(p[q] for p in parts) for q in QUESTIONS} | {
-                "ms": sum(p["ms"] for p in parts), "tokens": sum(p["tokens"] for p in parts), "chunked": len(parts)}
-        return None
-    return res if isinstance(res, dict) else None
 
-def call_one(text):
-    if not text.strip():
-        return dict.fromkeys(QUESTIONS, 0.0) | {"ms": 0.0, "tokens": 0}
-    body = json.dumps({"model": "jev-latest", "state": text[:MAX_CHARS], "questions": QUESTIONS}).encode()
-    for attempt in range(8):
-        req = urllib.request.Request(URL, data=body, headers={"Authorization": "Bearer " + KEY, "Content-Type": "application/json"})
-        t = time.perf_counter()
-        try:
-            r = json.load(urllib.request.urlopen(req, timeout=120))
-            out = {q: p_yes(a) for q, a in r["answers"].items()}
-            return out | {"ms": (time.perf_counter() - t) * 1000, "tokens": r["usage"]["input_tokens"]}
-        except urllib.error.HTTPError as e:
-            if e.code in (429, 500, 502, 503, 504):
-                time.sleep(min(60, 2 ** attempt)); continue
-            raise RuntimeError(f"{e.code} {e.read()[:200]}")
-        except (urllib.error.URLError, TimeoutError, ConnectionError):
-            time.sleep(min(60, 2 ** attempt))
-    return "server_error"  # caller chunks or leaves it out; a rerun retries it
+def sha(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
-for split in sys.argv[1:] or ["test", "dev"]:
-    path = f"scores/jev_{split}.jsonl"
-    done = {json.loads(l)["id"] for l in open(path)} if os.path.exists(path) else set()
+
+_gate, _last = threading.Lock(), [0.0]
+MIN_INTERVAL = 60 / 90  # stay under the key's 100 requests/minute; bursts over it cost a ~40 s wait
+
+
+def score(r):
+    with _gate:  # one request start per interval (a long page may still use several requests)
+        time.sleep(max(0.0, _last[0] + MIN_INTERVAL - time.monotonic()))
+        _last[0] = time.monotonic()
+    try:
+        return {"id": r["id"], "sha": sha(r["text"]), "text": det.score_many([r["text"]])[0]}
+    except Exception as e:
+        return {"id": r["id"], "sha": sha(r["text"]), "error": f"{type(e).__name__}: {e}"[:200]}
+
+
+for split in args.splits:
+    path = f"scores/{args.tag}_{split}.jsonl"
     rows = [json.loads(l) for l in open(f"corpus/{split}.extracted.jsonl")]
-    rows = [r for r in rows if r["id"] not in done]
-    failed = 0
-    with open(path, "a") as out, ThreadPoolExecutor(4) as ex:
-        for r, res in zip(rows, ex.map(lambda r: call(r["text"]), rows)):
-            if res is None:
-                failed += 1; continue
-            out.write(json.dumps({"id": r["id"], "text": res}) + "\n"); out.flush()
-    print("jev", split, "failed", failed, flush=True)
-    print("jev", split, "done", flush=True)
+    want = {r["id"]: sha(r["text"]) for r in rows}
+    kept = []
+    if os.path.exists(path):  # keep only good rows that still match the corpus
+        kept = [s for s in map(json.loads, open(path)) if "error" not in s and want.get(s["id"]) == s.get("sha")]
+    done = {s["id"] for s in kept}
+    todo = [r for r in rows if r["id"] not in done]
+    with open(path, "w") as out:
+        out.writelines(json.dumps(s) + "\n" for s in kept)
+        out.flush()
+        errors = 0
+        with ThreadPoolExecutor(4) as ex:
+            for n, res in enumerate(ex.map(score, todo), 1):
+                errors += "error" in res
+                out.write(json.dumps(res) + "\n")
+                out.flush()
+                if n % 100 == 0:
+                    print(args.tag, split, n, "/", len(todo), "errors", errors, flush=True)
+    print(args.tag, split, "scored", len(todo), "kept", len(kept), "errors", errors, flush=True)

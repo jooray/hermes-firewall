@@ -1,4 +1,68 @@
-# Benchmark results (2026-09-23)
+# Benchmark results
+
+Current results first; the sections after "History" are earlier runs, kept for the record.
+
+## Current results (2026-09-26)
+
+What changed since the v4 run below:
+
+- **Jev is scored the way the plugin calls it.** `score_jev.py` uses the plugin's own client
+  (`hermes_firewall.jev_detector.JevDetector`): the policy's two questions in one request, the
+  same 12,000-character chunks, the same split into smaller pieces on HTTP 500. The old scorer
+  asked all seven questions in one request and cut input at 90,000 characters.
+- **Failures are failures.** A row that cannot be scored is stored as an error and left out of
+  every number (none this run). The old run stored one HTTP 500 as all-1.0 scores and counted it as
+  a block; that page now scores normally through the chunked client.
+- **Test items that duplicate dev are excluded.** 92 test items have extracted text (the
+  detector's exact input) identical to a dev item: 56 Nostr posts, 23 carrier twins and
+  13 clean emails, all benign. They measure nothing the dev fit has not seen.
+- **Extraction changes** (words joined by `_`/`-` kept readable, script comments extracted) changed
+  12 test rows and no dev rows. Jev was rescored on all of them. The other detectors were not
+  rescored, so the cross-detector table leaves those 12 rows out.
+- Score files carry the sha256 of the scored text; a rerun rescores rows whose text changed.
+- Hidden-content flags in the evaluation are the deployed list (`html_hidden_text` no longer counts).
+
+### Does the question set change Jev's answers? (`compare_jev_questions.py`)
+
+Same items, scored with all seven questions in one request and with only the two deployed ones.
+Per item, the deployed aggregation moved by a median of 0.00, 95th percentile 0.04,
+maximum 0.13; 3 of 822 items moved by more than 0.1. On the 730 deduplicated test items:
+
+| Jev request | Test AUC | Caught @ dev 2% (test FP) | Attacks blocked / flagged / passed | Benign blocked |
+|---|---:|---:|---|---:|
+| 7 questions | 0.980 | 91.3% (4.1%) | 386 / 35 / 15 | 9 of 294 |
+| 2 questions (deployed) | 0.981 | 89.0% (3.4%) | 386 / 31 / 19 | 10 of 294 |
+
+The ranking is the same (AUC 0.980 vs 0.981) and the shipped thresholds block the same 386 attacks; the catch rate at the single dev-2% threshold moves by two points. `policy-jev.json` was refitted on the two-question dev scores:
+block ≥ 0.38, warn ≥ 0.20 (was 0.40 / 0.19).
+
+### All detectors (`blog_charts.py`, 718 test items, 433 attacks)
+
+| Detector | Test AUC | Planted email AUC | Caught @ dev 2% (test FP) |
+|---|---:|---:|---:|
+| Jev `jev-latest` (Venice) | 0.981 | 1.000 | 88.9% (3.5%) |
+| SemIf Qwen3.5-4B 8-bit | 0.931 | 0.973 | 68.1% (4.9%) |
+| SemIf Qwen3.5-4B BF16 | 0.931 | 0.971 | 67.7% (4.9%) |
+| SemIf Qwen3.5-4B 4-bit | 0.915 | 0.962 | 54.5% (2.8%) |
+| ProtectAI DeBERTa v2 | 0.813 | 0.433 | 49.4% (4.6%) |
+| Laya 421M | 0.790 | 0.543 | 39.5% (4.9%) |
+| Keyword regex | 0.602 | 0.500 | 21.5% (1.1%) |
+
+Verdicts with each backend's shipped policy file. The plugin blocks or passes; "flagged" is a scan
+log entry (warn threshold or hidden content) and changes nothing the model sees.
+
+| Policy | Attacks blocked / flagged / passed (%) | Planted email | Benign |
+|---|---|---|---|
+| Jev | 88.5 / 7.2 / 4.4 | 92.0 / 7.3 / 0.7 | 3.5 / 12.6 / 83.9 |
+| SemIf 8-bit | 47.3 / 31.6 / 21.0 | 13.3 / 44.0 / 42.7 | 1.1 / 16.1 / 82.8 |
+| Laya | 29.1 / 24.0 / 46.9 | 0.7 / 19.3 / 80.0 | 2.5 / 18.2 / 79.3 |
+
+The test split was looked at during development (false positives inspected, changed rows
+rescored), so these are exploratory numbers, not a clean held-out evaluation.
+
+# History
+
+## Benchmark results (2026-09-23)
 
 Hardware: Apple M2 Pro, 32 GB. All local models run on it.
 

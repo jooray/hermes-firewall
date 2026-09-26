@@ -1,0 +1,214 @@
+{
+ "n_test": 718,
+ "attacks": 433,
+ "auc": {
+  "Planted instruction in email (BIPIA)": {
+   "Jev (cloud)": 0.9999999999999999,
+   "SemIf Qwen3.5-4B 8-bit": 0.9733333333333334,
+   "SemIf Qwen3.5-4B BF16": 0.9709909909909911,
+   "SemIf Qwen3.5-4B 4-bit": 0.9619819819819819,
+   "Laya 421M": 0.5434234234234234,
+   "DeBERTa v2": 0.43288288288288285,
+   "Keyword regex": 0.5
+  },
+  "Direct injections (deepset)": {
+   "Jev (cloud)": 0.9860119047619047,
+   "SemIf Qwen3.5-4B 8-bit": 0.981845238095238,
+   "SemIf Qwen3.5-4B BF16": 0.9836309523809523,
+   "SemIf Qwen3.5-4B 4-bit": 0.9663690476190475,
+   "Laya 421M": 0.8773809523809524,
+   "DeBERTa v2": 0.9014880952380953,
+   "Keyword regex": 0.55
+  },
+  "Gandalf vs all benign": {
+   "Jev (cloud)": 0.9859492481203007,
+   "SemIf Qwen3.5-4B 8-bit": 0.9740914786967418,
+   "SemIf Qwen3.5-4B BF16": 0.9732769423558898,
+   "SemIf Qwen3.5-4B 4-bit": 0.9857142857142857,
+   "Laya 421M": 0.9125626566416041,
+   "DeBERTa v2": 0.9986998746867168,
+   "Keyword regex": 0.7447368421052631
+  },
+  "Markup carriers (attributes, scripts)": {
+   "Jev (cloud)": 0.9696078431372549,
+   "SemIf Qwen3.5-4B 8-bit": 0.9568627450980393,
+   "SemIf Qwen3.5-4B BF16": 0.9549019607843138,
+   "SemIf Qwen3.5-4B 4-bit": 0.9372549019607843,
+   "Laya 421M": 0.7676470588235295,
+   "DeBERTa v2": 0.8441176470588235,
+   "Keyword regex": 0.6617647058823529
+  },
+  "All hidden-text carriers": {
+   "Jev (cloud)": 0.9809797482211275,
+   "SemIf Qwen3.5-4B 8-bit": 0.9677066228790367,
+   "SemIf Qwen3.5-4B BF16": 0.9674329501915709,
+   "SemIf Qwen3.5-4B 4-bit": 0.9534756431308156,
+   "Laya 421M": 0.8404488232074439,
+   "DeBERTa v2": 0.8385331143951833,
+   "Keyword regex": 0.6507936507936508
+  },
+  "Image carriers": {
+   "Jev (cloud)": 0.9265046296296295,
+   "SemIf Qwen3.5-4B 8-bit": 0.9299768518518517,
+   "SemIf Qwen3.5-4B BF16": 0.927662037037037,
+   "SemIf Qwen3.5-4B 4-bit": 0.9172453703703703,
+   "Laya 421M": 0.8813657407407408,
+   "DeBERTa v2": 0.7667824074074073,
+   "Keyword regex": 0.625
+  },
+  "All attacks vs Nostr posts": {
+   "Jev (cloud)": 0.9866179112137541,
+   "SemIf Qwen3.5-4B 8-bit": 0.9215037208108802,
+   "SemIf Qwen3.5-4B BF16": 0.9205029509879394,
+   "SemIf Qwen3.5-4B 4-bit": 0.8932768796510137,
+   "Laya 421M": 0.7651013600205285,
+   "DeBERTa v2": 0.8309982037464716,
+   "Keyword regex": 0.6073903002309469
+  },
+  "Overall": {
+   "Jev (cloud)": 0.9807908917791014,
+   "SemIf Qwen3.5-4B 8-bit": 0.9313074834893238,
+   "SemIf Qwen3.5-4B BF16": 0.9311697256999312,
+   "SemIf Qwen3.5-4B 4-bit": 0.9151493051335035,
+   "Laya 421M": 0.7898626473805761,
+   "DeBERTa v2": 0.8130991450913659,
+   "Keyword regex": 0.6021271423362099
+  }
+ },
+ "verdicts": {
+  "Jev (cloud) | all attacks": {
+   "n": 433,
+   "blocked": 88.45265588914549,
+   "flagged": 7.159353348729792,
+   "passed": 4.387990762124711
+  },
+  "Jev (cloud) | planted email": {
+   "n": 150,
+   "blocked": 92.0,
+   "flagged": 7.333333333333333,
+   "passed": 0.6666666666666666
+  },
+  "Jev (cloud) | benign": {
+   "n": 285,
+   "blocked": 3.508771929824561,
+   "flagged": 12.631578947368421,
+   "passed": 83.85964912280701
+  },
+  "SemIf Qwen3.5-4B 8-bit | all attacks": {
+   "n": 433,
+   "blocked": 47.34411085450346,
+   "flagged": 31.63972286374134,
+   "passed": 21.016166281755197
+  },
+  "SemIf Qwen3.5-4B 8-bit | planted email": {
+   "n": 150,
+   "blocked": 13.333333333333334,
+   "flagged": 44.0,
+   "passed": 42.666666666666664
+  },
+  "SemIf Qwen3.5-4B 8-bit | benign": {
+   "n": 285,
+   "blocked": 1.0526315789473684,
+   "flagged": 16.140350877192983,
+   "passed": 82.80701754385964
+  },
+  "SemIf Qwen3.5-4B BF16 | all attacks": {
+   "n": 433,
+   "blocked": 47.57505773672055,
+   "flagged": 31.63972286374134,
+   "passed": 20.785219399538107
+  },
+  "SemIf Qwen3.5-4B BF16 | planted email": {
+   "n": 150,
+   "blocked": 14.0,
+   "flagged": 45.333333333333336,
+   "passed": 40.666666666666664
+  },
+  "SemIf Qwen3.5-4B BF16 | benign": {
+   "n": 285,
+   "blocked": 1.0526315789473684,
+   "flagged": 16.842105263157894,
+   "passed": 82.10526315789474
+  },
+  "SemIf Qwen3.5-4B 4-bit | all attacks": {
+   "n": 433,
+   "blocked": 44.80369515011547,
+   "flagged": 33.25635103926097,
+   "passed": 21.939953810623557
+  },
+  "SemIf Qwen3.5-4B 4-bit | planted email": {
+   "n": 150,
+   "blocked": 12.666666666666666,
+   "flagged": 42.0,
+   "passed": 45.333333333333336
+  },
+  "SemIf Qwen3.5-4B 4-bit | benign": {
+   "n": 285,
+   "blocked": 1.0526315789473684,
+   "flagged": 18.596491228070175,
+   "passed": 80.35087719298245
+  },
+  "Laya 421M | all attacks": {
+   "n": 433,
+   "blocked": 29.099307159353348,
+   "flagged": 24.018475750577366,
+   "passed": 46.88221709006928
+  },
+  "Laya 421M | planted email": {
+   "n": 150,
+   "blocked": 0.6666666666666666,
+   "flagged": 19.333333333333332,
+   "passed": 80.0
+  },
+  "Laya 421M | benign": {
+   "n": 285,
+   "blocked": 2.456140350877193,
+   "flagged": 18.24561403508772,
+   "passed": 79.29824561403508
+  }
+ },
+ "table": {
+  "Jev (cloud)": {
+   "auc": 0.9807908917791014,
+   "planted_email_auc": 0.9999999999999999,
+   "tpr_at_dev2": 0.8891454965357968,
+   "fpr_at_dev2": 0.03508771929824561
+  },
+  "SemIf Qwen3.5-4B 8-bit": {
+   "auc": 0.9313074834893238,
+   "planted_email_auc": 0.9733333333333334,
+   "tpr_at_dev2": 0.6812933025404158,
+   "fpr_at_dev2": 0.04912280701754386
+  },
+  "SemIf Qwen3.5-4B BF16": {
+   "auc": 0.9311697256999312,
+   "planted_email_auc": 0.9709909909909911,
+   "tpr_at_dev2": 0.6766743648960739,
+   "fpr_at_dev2": 0.04912280701754386
+  },
+  "SemIf Qwen3.5-4B 4-bit": {
+   "auc": 0.9151493051335035,
+   "planted_email_auc": 0.9619819819819819,
+   "tpr_at_dev2": 0.5450346420323325,
+   "fpr_at_dev2": 0.028070175438596492
+  },
+  "Laya 421M": {
+   "auc": 0.7898626473805761,
+   "planted_email_auc": 0.5434234234234234,
+   "tpr_at_dev2": 0.394919168591224,
+   "fpr_at_dev2": 0.04912280701754386
+  },
+  "DeBERTa v2": {
+   "auc": 0.8130991450913659,
+   "planted_email_auc": 0.43288288288288285,
+   "tpr_at_dev2": 0.4942263279445728,
+   "fpr_at_dev2": 0.0456140350877193
+  },
+  "Keyword regex": {
+   "auc": 0.6021271423362099,
+   "planted_email_auc": 0.5,
+   "tpr_at_dev2": 0.21478060046189376,
+   "fpr_at_dev2": 0.010526315789473684
+  }
+ }
+}

@@ -5,11 +5,11 @@
   "choice_kind"
  ],
  "agg": "max",
- "block": 0.4,
- "warn": 0.19,
+ "block": 0.38,
+ "warn": 0.2,
  "hiding_escalates": true,
  "bits": null,
  "model": "",
  "revision": "",
- "fitted_on": "bench dev split (jev), block@1% warn@5% dev FPR"
+ "fitted_on": "bench dev split (jev_deployed: policy questions only, one request), block@1% warn@5% dev FPR"
 }
