@@ -36,7 +36,9 @@ class SemIfDetector:
         out = []
         for text in texts:
             best = dict.fromkeys(self.questions, 0.0)
-            chunks = chunk_text(text, self.chunk_chars, self.overlap)[: self.max_chunks] if text.strip() else []
+            chunks = chunk_text(text, self.chunk_chars, self.overlap) if text.strip() else []
+            best["truncated"] = len(chunks) > self.max_chunks  # reported, never silent
+            chunks = chunks[: self.max_chunks]
             for ch in chunks:
                 rows = self._rows(ch)
                 try:

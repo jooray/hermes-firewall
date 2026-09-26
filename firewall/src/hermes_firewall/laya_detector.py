@@ -51,7 +51,9 @@ class LayaDetector:
             if not text.strip():  # nothing to score; Laya rates empty input as suspicious
                 out[ti]["n_chunks"] = 0
                 continue
-            chunks = chunk_text(text, self.chunk_chars, self.overlap)[: self.max_chunks]
+            chunks = chunk_text(text, self.chunk_chars, self.overlap)
+            out[ti]["truncated"] = len(chunks) > self.max_chunks  # reported, never silent
+            chunks = chunks[: self.max_chunks]
             out[ti]["n_chunks"] = len(chunks)
             for ch in chunks:
                 prepared, _ = self.agent.prepare(ch, self.questions)

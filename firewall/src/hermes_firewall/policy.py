@@ -3,8 +3,9 @@
 score      = aggregation of Laya question probabilities (fitted on the dev split)
 injection  = score >= block threshold
 suspicious = score >= warn threshold, or content was hidden from humans
-             (invisible Unicode, hidden HTML, base64 text, tiny/faint image text,
-             data after a JPEG end marker)
+             (invisible Unicode, base64 text, sentences in HTML ids, tiny/faint image text,
+             data after a JPEG end marker), or part of the content was not scanned
+             (no OCR engine, OCR failed, an image that could not be read, a chunk limit)
 """
 
 from __future__ import annotations
@@ -14,8 +15,16 @@ import math
 from dataclasses import asdict, dataclass, field
 
 # html_hidden_text is informational only: every real page hides menus and screen-reader text.
+# The hidden text itself is still scored.
 HIDING_FLAGS = ("unicode_tags", "zero_width", "base64_text", "html_attribute_text", "image_small_text",
                 "image_low_contrast_text", "jpeg_trailing_data", "bidi_override")
+# Part of the input never reached the detector. An incomplete scan must not read as "safe".
+INCOMPLETE_FLAGS = {
+    "ocr_unavailable": "image text not read (no OCR engine)",
+    "ocr_failed": "image text not read (OCR failed)",
+    "image_unreadable": "image could not be decoded",
+    "scan_truncated": "content longer than the detector's chunk limit; the rest was not scored",
+}
 
 REASON = {
     "addressed_ai": "instructions addressed to an AI",
@@ -46,13 +55,20 @@ class Policy:
 
     @classmethod
     def load(cls, path: str | None, backend: str = "laya") -> "Policy":
+        """The bundled policy-<backend>.json, or a policy file. A missing policy is an error:
+        silently falling back to unfitted defaults would run a configuration nobody measured."""
         if not path:
+            if backend == "none":  # OCR-only service: no scoring, no thresholds
+                return cls(backend="none")
             from importlib.resources import files
             try:
                 return cls(**json.loads(files("hermes_firewall").joinpath(f"policy-{backend}.json").read_text()))
             except FileNotFoundError:
-                return cls(backend=backend)
-        return cls(**json.load(open(path)))
+                raise FileNotFoundError(
+                    f"no bundled policy-{backend}.json; fit one (bench/compare_variants.py --write-policy) "
+                    "or pass --policy") from None
+        with open(path) as f:
+            return cls(**json.load(f))
 
     def describe(self) -> dict:
         return asdict(self)
@@ -69,12 +85,14 @@ class Policy:
     def decide(self, sig: dict, flags: list[str]) -> dict:
         s = self.score(sig)
         hidden = [f for f in flags if f in HIDING_FLAGS]
+        incomplete = [f for f in dict.fromkeys(flags) if f in INCOMPLETE_FLAGS]
         if s >= self.block:
             verdict = "injection"
-        elif s >= self.warn or (self.hiding_escalates and hidden):
+        elif s >= self.warn or (self.hiding_escalates and hidden) or incomplete:
             verdict = "suspicious"
         else:
             verdict = "safe"
         reasons = [REASON.get(q, q) for q in self.questions if sig.get(q, 0) >= 0.8 and q in REASON]
         reasons += [f"hidden content: {f}" for f in hidden]
+        reasons += [f"not fully scanned: {INCOMPLETE_FLAGS[f]}" for f in incomplete]
         return {"verdict": verdict, "score": round(s, 4), "reasons": reasons}

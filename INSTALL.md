@@ -22,24 +22,40 @@ hermes plugins list | grep prompt-firewall        # expect: prompt-firewall  ena
 
 Hermes warns that this is a custom (unreviewed) source. That is expected.
 
-## 2. OCR for images (optional, **owner**: needs sudo)
+## 2. OCR for images (optional, **owner**: needs sudo or Homebrew)
 
-On macOS, Apple Vision is used automatically and nothing needs installing. Elsewhere, install
-Tesseract:
+Install Tesseract:
 
 | System | Command |
 |---|---|
+| macOS | `brew install tesseract` |
 | Arch | `sudo pacman -S tesseract tesseract-data-eng` |
 | Debian / Ubuntu | `sudo apt install tesseract-ocr` |
 | Fedora | `sudo dnf install tesseract` |
 
-Check with `tesseract --version`. Without OCR, image metadata is still scanned and every image with
-possible text is marked suspicious. Images take roughly 0.5 s each on a laptop and ~10 s on a small
-Celeron-class server; text scans don't use OCR.
+Check with `tesseract --version`. On macOS the plugin prefers Apple Vision, which reads small and
+faint text better, but only when the `ocrmac` package is installed in Hermes' own virtual
+environment. Hermes does not ship it. To add it, find the interpreter the `hermes` command runs
+with and install into that environment:
+
+```bash
+head -1 "$(command -v hermes)"                          # e.g. #!/path/to/venv/bin/python
+uv pip install --python /path/to/venv/bin/python ocrmac  # the path from the line above
+```
+
+Without any OCR engine, image metadata is still scanned and every image is marked suspicious,
+because its pixels were not read. An OCR run that fails or times out is treated the same way.
+Images take roughly 0.5 s each on a laptop and ~10 s on a small Celeron-class server; text scans
+don't use OCR.
 
 ## 3. Venice API key (**owner**)
 
-Scoring uses Jev through Venice's Decisions API, which costs about $0.035 per 1,000 scans. Create a
+Extraction and OCR run locally, but the extracted text of every scanned result (web pages, email,
+files, text read from images) is sent to Venice for scoring. If that is not acceptable, use the
+local service instead (see the README).
+
+Scoring uses Jev through Venice's Decisions API. On the benchmark corpus it cost about $0.035 per
+1,000 scans; long pages are split into several requests and cost more. Create a
 **dedicated** key in the Venice dashboard; a spending cap is a good idea. The rate limit is per
 key (100 requests a minute on the key tested), and a long page uses several requests, so sharing
 the agent's own key would slow both. The owner writes the key into a file containing only the key:
@@ -57,13 +73,35 @@ PROMPT_FIREWALL_VENICE_KEY_FILE=~/.venice-firewall-key
 PROMPT_FIREWALL_WARN_ONLY=1
 ```
 
-`WARN_ONLY=1` never blocks. Suspicious content reaches the model inside an "untrusted data"
-banner. Keep it on for about a week, check the scan log, then remove the line to start blocking.
+The plugin never edits a result. It either passes it unchanged or replaces the whole result with a
+short JSON note saying it was blocked. Adding a warning to the text would break the JSON that Hermes
+parses from tool results (exit codes, failure detection).
+
+`WARN_ONLY=1` never blocks: what would have been blocked is only logged as `flagged`. Run with it
+for a while on real traffic, review the flagged entries, then remove the line to start blocking.
 
 Scanning failures (no Venice credit, Venice down, a bug) **fail open** by default: content passes
-through unscanned and the agent keeps working, and the log records it. For strict setups,
-`PROMPT_FIREWALL_ON_ERROR=closed` withholds web, MCP and email content instead. Every setting is
-listed in `hermes-plugin/prompt-firewall/plugin.yaml`.
+through unscanned so the agent keeps working, and the log records it. Content already found to be
+an injection is blocked even if a later part of the same result fails to scan. For strict setups,
+`PROMPT_FIREWALL_ON_ERROR=closed` withholds every scanned source when scanning fails, except local
+shell output. Every setting is listed in `hermes-plugin/prompt-firewall/plugin.yaml`.
+
+### What gets scanned
+
+| Source | Examples | On injection | When scanning fails |
+|---|---|---|---|
+| External content | `web_*`, `x_search`, `browser_*`, `mcp_*`, `vision_analyze`, `computer_use`, shell commands that fetch (`curl`, `wget`, `himalaya`, URLs) and their background jobs | blocked | passed, or withheld with `ON_ERROR=closed` |
+| Local content and unknown tools | `read_file`, `search_files`, `delegate_task`, `session_search`, any tool not listed in the plugin | blocked | passed, or withheld with `ON_ERROR=closed` |
+| Local shell output | `terminal`, `execute_code`, `process_manage` for local commands | logged only | passed |
+| Cron script output | the body of the `## Script Output` block of a scheduled job's prompt | blocked | passed, or withheld with `ON_ERROR=closed` |
+| Not scanned | the agent's own state and actions: `memory`, `todo_list`, `write_file`, `patch`, `send_message`, generators, UI tools; results under 3 words | | |
+
+Images in a result are OCR'd and scanned (up to 8 per result). Images over that limit, remote image
+URLs (the model provider fetches those itself), images that cannot be decoded and images whose OCR
+failed are logged as `flagged` with the reason, never as `passed`. The same goes for content hidden
+with tricks like invisible Unicode or near-white image text that scores below the block threshold.
+Inbound chat messages are not scanned unless `PROMPT_FIREWALL_GATEWAY=1`.
+`PROMPT_FIREWALL_SKIP_TOOLS` adds tools to the not-scanned list.
 
 ## 5. Restart Hermes (**owner**)
 
@@ -85,10 +123,19 @@ outcomes mean:
 | `action` | Meaning |
 |---|---|
 | `passed` | scanned, looked safe |
-| `banner` | suspicious or injection; passed with an "untrusted data" banner (warn-only or hidden content) |
+| `flagged` | passed unchanged, but worth a look: suspicious score, hidden content, a part that could not be scanned, or an injection that was not blocked (warn-only, local shell output) |
 | `blocked` | injection; replaced by a stub, original in `~/.hermes/firewall/quarantine/` |
-| `passed-unavailable` | scanning failed, content passed (the `error` field says why, e.g. a missing key file) |
-| `passed-unscanned` | scanner paused for a minute after a failure |
+| `passed-unavailable` | scanning failed, content passed unscanned (the `error` field says why, e.g. a missing key file) |
+| `passed-unscanned` | scanner paused for a minute after a failure; content passed unscanned |
+| `blocked-unavailable` | scanning failed and `ON_ERROR=closed`: content withheld |
+
+A failure to reach Venice pauses scanning for a minute (`PROMPT_FIREWALL_BREAKER_SECONDS`), so an
+outage does not add a timeout to every tool call. A malformed image does not pause anything; it is
+only logged with its own result.
+
+The quarantine directory holds the full original of every blocked result, so treat it as
+sensitive. Review it for false positives, and delete old files when you no longer need them. After
+updating the plugin, restart Hermes.
 
 The log never contains the scanned content. To list everything that was not simply passed:
 

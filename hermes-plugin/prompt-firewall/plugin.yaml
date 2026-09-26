@@ -1,5 +1,5 @@
 name: prompt-firewall
-version: "0.2.0"
+version: "0.3.0"
 description: "Scan untrusted tool results (web, MCP, email, files, images) for prompt injection before they enter the model's context. Local extraction and OCR, scoring by Jev (Venice Decisions API)."
 author: "hermes-firewall contributors"
 kind: standalone
@@ -8,10 +8,13 @@ provides_hooks:
 optional_env:
   - PROMPT_FIREWALL_VENICE_KEY_FILE  # file holding a Venice API key (recommended: a dedicated key)
   - PROMPT_FIREWALL_VENICE_KEY       # or the key itself; falls back to VENICE_API_KEY
-  - PROMPT_FIREWALL_WARN_ONLY        # "1" = never block, banner only (recommended first week)
-  - PROMPT_FIREWALL_ON_ERROR         # "open" (default): pass content through when scanning fails; "closed": withhold
+  - PROMPT_FIREWALL_WARN_ONLY        # "1" = never block, only log what would be blocked (recommended at first)
+  - PROMPT_FIREWALL_ON_ERROR         # "open" (default): pass content through unscanned when scanning fails; "closed": withhold (except local shell output)
   - PROMPT_FIREWALL_BREAKER_SECONDS  # after a scanning failure, skip scanning this long (default 60)
   - PROMPT_FIREWALL_TIMEOUT          # seconds per scanner request (default 5)
+  - PROMPT_FIREWALL_MIN_WORDS        # results with fewer words are not scanned (default 3)
+  - PROMPT_FIREWALL_MAX_IMAGES       # images scanned per result (default 8); more are logged as not fully scanned
+  - PROMPT_FIREWALL_SKIP_TOOLS       # comma-separated extra tools never scanned (every other tool is)
   - FIREWALL_OCR                     # auto (default) | apple | tesseract | rapidocr | none
   - PROMPT_FIREWALL_GATEWAY          # "1" = also scan inbound chat from non-owners (off by default)
   - PROMPT_FIREWALL_OWNER_IDS        # comma-separated gateway user ids never scanned

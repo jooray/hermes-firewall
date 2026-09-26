@@ -77,14 +77,29 @@ def reveal_base64(text: str, out: Extracted) -> str:
 
 
 OPAQUE = re.compile(r"(?:nostr:)?[A-Za-z0-9_\-+/=]{32,}")
+_JOINER = re.compile(r"[_\-+/=.]+")
+_WORD = re.compile(r"[A-Z]?[a-z]{1,19}|[A-Z]{2,20}")
+
+
+def _joined_words(token: str) -> list[str] | None:
+    """Words of a token that is really a sentence with its spaces replaced
+    (Ignore_previous_instructions, reveal-the-system-prompt): three or more
+    plain words, no digits. Random ids and base64 fail this."""
+    parts = [x for x in _JOINER.split(token.removeprefix("nostr:")) if x]
+    if len(parts) >= 3 and all(_WORD.fullmatch(x) for x in parts):
+        return parts
+    return None
 
 
 def collapse_opaque(text: str) -> str:
     """Replace long opaque tokens (hex ids, bech32 nostr refs, base64 blobs, API tokens) with a
-    placeholder. They carry no instructions (decodable base64 was already revealed) and the
-    classifier reads long random strings as suspicious: 23 of 29 dev false positives at warn
-    level contained one."""
-    return OPAQUE.sub(lambda m: f"[id:{len(m.group(0))}]", text)
+    placeholder. The classifier reads long random strings as suspicious: 23 of 29 dev false
+    positives at warn level contained one. A token made of plain words joined by _ - + / = or .
+    is readable text to the agent's model, so it is kept, with spaces restored."""
+    def sub(m):
+        words = _joined_words(m.group(0))
+        return " ".join(words) if words else f"[id:{len(m.group(0))}]"
+    return OPAQUE.sub(sub, text)
 
 
 def looks_like_html(text: str) -> bool:
@@ -92,8 +107,10 @@ def looks_like_html(text: str) -> bool:
 
 
 # The scanner must see at least what the agent's model can see. A model reading raw HTML
-# (curl, raw fetches) reads every attribute and script, so extraction only ever ADDS text:
-# visible text, then everything a human would not see.
+# (curl, raw fetches) reads every attribute, comment and script, so extraction keeps the
+# visible text and adds everything a human would not see: comments, hidden elements, and any
+# attribute value, script string or script comment that reads as natural language (three or
+# more words). Shorter fragments in attributes and scripts are dropped as markup noise.
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
         "source", "track", "wbr"}
 RAW_TEXT = {"script", "style", "noscript", "template", "textarea"}
@@ -103,7 +120,8 @@ A11Y_ATTRS = {"alt", "title", "aria-label", "aria-description", "placeholder", "
 FLAG_ATTRS = {"id"}
 BLOCK = {"p", "div", "br", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article",
          "header", "footer", "td", "th", "pre", "blockquote", "ul", "ol", "table", "hr"}
-STRING_LITERAL = re.compile(r'"((?:[^"\\\n]|\\.){12,})"|\'((?:[^\'\\\n]|\\.){12,})\'|`([^`]{12,})`')
+STRING_LITERAL = re.compile(r'"((?:[^"\\\n]|\\.){8,})"|\'((?:[^\'\\\n]|\\.){8,})\'|`([^`]{8,})`')
+SCRIPT_COMMENT = re.compile(r"/\*(.*?)\*/|(?<![:\\\w])//([^\n]*)", re.S)
 
 
 def natural_language(value: str, min_words: int = 3) -> bool:
@@ -166,6 +184,8 @@ class _HTMLCollector(HTMLParser):
                 self.code.append(data)
             else:
                 self.code.extend(m.group(1) or m.group(2) or m.group(3) for m in STRING_LITERAL.finditer(data))
+                if self.raw == "script":
+                    self.code.extend(m.group(1) or m.group(2) for m in SCRIPT_COMMENT.finditer(data))
             return
         (self.hidden if self._hidden_now() else self.visible).append(data)
 
@@ -234,6 +254,8 @@ def _ocr_tesseract(img):
     img.save(buf, "PNG")
     r = subprocess.run([exe, "stdin", "stdout", "--psm", "3", "-l", "eng"], input=buf.getvalue(),
                        capture_output=True, timeout=OCR_TIMEOUT, env={**os.environ, "OMP_THREAD_LIMIT": "1"})
+    if r.returncode != 0:  # empty output from a failed run must not read as "no text in the image"
+        raise RuntimeError(f"tesseract exited {r.returncode}: {r.stderr.decode('utf-8', 'replace')[:200]}")
     return [l.strip() for l in r.stdout.decode("utf-8", "replace").splitlines() if l.strip()]
 
 
@@ -276,13 +298,11 @@ def ocr_engine() -> str:
 
 
 def _ocr_lines(img) -> list[str]:
+    """OCR one image. Raises when the engine fails: the caller flags the image as not read."""
     name = ocr_engine()
     if name == "none":
         return []
-    try:
-        return OCR_ENGINES[name](img)
-    except Exception:
-        return []
+    return OCR_ENGINES[name](img)
 
 
 def _ocr(img) -> str:
@@ -341,14 +361,10 @@ def image_metadata(data: bytes, img) -> list[str]:
     return found
 
 
-def extract_image(data: bytes) -> Extracted:
+def _ocr_passes(rgb):
+    """Plain OCR, a small-print pass and a contrast-stretched pass: (plain, small lines, stretched)."""
     from PIL import Image
 
-    out = Extracted(text="")
-    img = Image.open(io.BytesIO(data))
-    img.load()
-    meta = image_metadata(data, img)
-    rgb = img.convert("RGB")
     plain = _ocr(rgb)
     # small print (e.g. 11 px footers): OCR 2x2 overlapping tiles upscaled 3x
     small = []
@@ -367,6 +383,23 @@ def extract_image(data: bytes) -> Extracted:
             small.extend(line for line in _ocr_lines(tile) if line.lower() not in plain.lower())
     stretched_img = _stretch(rgb)
     stretched = _ocr(stretched_img) if stretched_img is not None else ""
+    return plain, small, stretched
+
+
+def extract_image(data: bytes) -> Extracted:
+    from PIL import Image
+
+    out = Extracted(text="")
+    img = Image.open(io.BytesIO(data))
+    img.load()
+    meta = image_metadata(data, img)
+    rgb = img.convert("RGB")
+    plain, small, stretched = "", [], ""
+    try:
+        plain, small, stretched = _ocr_passes(rgb)
+    except Exception as e:  # timeout, crash: the pixels were not read, so say so
+        out.flags.append("ocr_failed")
+        out.revealed.append(f"OCR failed: {type(e).__name__}: {str(e)[:120]}")
     # text that only appears after contrast stretching was invisible to a human
     extra = [w for w in stretched.split() if w.lower() not in plain.lower()]
     parts = []

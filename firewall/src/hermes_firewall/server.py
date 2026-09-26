@@ -26,7 +26,6 @@ from .extract import extract
 from .policy import Policy
 
 log = logging.getLogger("hermes_firewall")
-MAX_TEXT = 200_000
 MAX_IMAGE = 15 * 1024 * 1024
 
 
@@ -69,12 +68,15 @@ class Firewall:
             if key in self.cache:
                 self.cache.move_to_end(key)
                 return {**self.cache[key], "cached": True}
-        ex = extract(image, "image") if image is not None else extract(text[:MAX_TEXT])
+        # Text is never cut here: the detector chunks it, and a chunk limit raises scan_truncated.
+        ex = extract(image, "image") if image is not None else extract(text)
         t1 = time.perf_counter()
         if self.det is None:
             raise RuntimeError("no scoring backend loaded (backend=none); use /v1/ocr")
         with self.lock:
             sig = self.det.score_many([ex.text])[0] if ex.text.strip() else {}
+        if sig.get("truncated"):
+            ex.flags.append("scan_truncated")
         res = self.policy.decide(sig, ex.flags)
         res.update(flags=ex.flags, revealed=[r[:200] for r in ex.revealed][:5],
                    signals={k: round(v, 4) for k, v in sig.items() if isinstance(v, float)},
