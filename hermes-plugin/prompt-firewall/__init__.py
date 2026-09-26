@@ -62,7 +62,7 @@ _down_until = 0.0  # after a scanner failure, skip scanning until then (no per-c
 OWNER_IDS = {s.strip() for s in os.environ.get("PROMPT_FIREWALL_OWNER_IDS", "").split(",") if s.strip()}
 QUARANTINE = Path(os.path.expanduser(os.environ.get("HERMES_HOME", "~/.hermes"))) / "firewall" / "quarantine"
 # Results with fewer words than this are not worth a scan ({"success": true}, "ok", a file path).
-# "Ignore previous instructions" is three words.
+# A classic override attempt fits in three words.
 MIN_WORDS = int(os.environ.get("PROMPT_FIREWALL_MIN_WORDS", "3"))
 MAX_IMAGES = int(os.environ.get("PROMPT_FIREWALL_MAX_IMAGES", "8"))  # more are marked unscanned
 MAX_IMAGE_BYTES = 15 * 1024 * 1024
