@@ -128,6 +128,7 @@ outcomes mean:
 | `passed-unavailable` | scanning failed, content passed unscanned (the `error` field says why, e.g. a missing key file) |
 | `passed-unscanned` | scanner paused for a minute after a failure; content passed unscanned |
 | `blocked-unavailable` | scanning failed and `ON_ERROR=closed`: content withheld |
+| `passed-trusted` | not scanned: Hermes' own rejection of a malformed `tool_call`, recognised by rebuilding the exact message from that call's arguments. It is addressed to the model, so it would otherwise score as an injection |
 
 A failure to reach Venice pauses scanning for a minute (`PROMPT_FIREWALL_BREAKER_SECONDS`), so an
 outage does not add a timeout to every tool call. A malformed image does not pause anything; it is

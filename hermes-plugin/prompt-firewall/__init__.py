@@ -350,6 +350,75 @@ _RANK = {"safe": 0, "suspicious": 1, "injection": 2}
 _PASSTHRU_TYPES = {"_ToolTimeoutResult", "_ToolCancelledResult"}  # agent/tool_executor.py
 
 
+# Hermes' own rejection of a malformed tool_call (tools/tool_search_validation.py): the model
+# called the bridge wrongly and Hermes says how to retry. That text is Hermes', not a tool's, and
+# scores as an injection because it is addressed to the model. It is recognised only by rebuilding
+# the exact message from this call's own arguments: the batch rejection echoes the model's first
+# entry, so a pattern match would let a tool result dressed as this error carry any text through.
+_ECHO_MAX = 1500  # tool_search_validation._ECHO_ARGS_MAX_CHARS
+
+
+def _calls_of(args: Dict[str, Any]) -> Optional[list]:
+    calls = args.get("calls")
+    if isinstance(calls, str):
+        try:
+            calls = json.loads(calls)
+        except ValueError:
+            return None
+    if not isinstance(calls, list) or not calls or not all(isinstance(c, dict) for c in calls):
+        return None
+    out = []
+    for c in calls:
+        a = c.get("arguments", {})
+        if isinstance(a, str):
+            try:
+                a = json.loads(a) if a.strip() else {}
+            except ValueError:
+                return None
+        out.append({"name": str(c.get("name") or "").strip(), "arguments": a})
+    return out
+
+
+def _bridge_error_texts(args: Dict[str, Any]) -> Tuple[set, str]:
+    """The exact rejections Hermes can return for these arguments, plus the prefix of the one whose
+    tail is a "Did you mean" list of registry names."""
+    calls = _calls_of(args)
+    if not calls:
+        return set(), ""
+    first, n = calls[0], len(calls)
+    texts = set()
+    if n > 1:
+        echo = json.dumps(first["arguments"], ensure_ascii=False, separators=(",", ":"))
+        echo = echo if len(echo) <= _ECHO_MAX else "{...}"
+        retry = '{"calls":[{"name":%s,"arguments":%s}]}' % (json.dumps(first["name"], ensure_ascii=False), echo)
+        texts.add(f"tool_call takes exactly one entry for local tools; you sent {n}. Retry with only: "
+                  f"{retry} then issue the remaining {n - 1} call(s) as separate tool_call invocations. "
+                  "Only connectors__ names may be batched together.")
+    name = first["name"]
+    texts.add(f"'{name}' is a directly-listed tool, not a deferred one. Call it directly instead of via tool_call.")
+    unknown = (f"'{name}' is not a known tool name. Deferred tools must be invoked through tool_call "
+               "by the exact name tool_search returns (e.g. mcp__<server>__<tool>).")
+    texts.add(unknown + " Use tool_search to find the exact name.")
+    return texts, unknown
+
+
+def _is_hermes_bridge_error(tool: str, args: Dict[str, Any], result: Any) -> bool:
+    if tool != "tool_call" or not isinstance(result, str):
+        return False
+    try:
+        body = json.loads(result)
+    except ValueError:
+        return False
+    if not isinstance(body, dict) or set(body) != {"error"} or not isinstance(body["error"], str):
+        return False
+    texts, hint_prefix = _bridge_error_texts(args)
+    msg = body["error"]
+    if msg in texts:
+        return True
+    return bool(hint_prefix) and re.fullmatch(
+        re.escape(hint_prefix) + r" Did you mean '[\w.-]+'(?:, '[\w.-]+')*\?", msg) is not None
+
+
 def _worst(a: Optional[dict], b: Optional[dict]) -> Optional[dict]:
     if b is None:
         return a
@@ -403,6 +472,9 @@ def on_tool_execution(*, tool_name: str = "", args: Any = None, next_call=None, 
         a = args if isinstance(args, dict) else {}
         mode = _policy(tool_name, a)
         if mode is None:
+            return result
+        if _is_hermes_bridge_error(tool_name, a, result):
+            _audit(tool=tool_name, mode=mode, action="passed-trusted", reasons=["hermes tool_call rejection"])
             return result
         mode = _track_provenance(tool_name, a, mode, result)
         text, images = _text_of(result)
