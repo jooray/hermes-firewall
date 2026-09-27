@@ -4,6 +4,8 @@ A prompt-injection gate for [Hermes Agent](https://github.com/NousResearch/herme
 untrusted content before the agent's model sees it: web pages, MCP and tool results, fetched email,
 files and images. Each result is either passed unchanged or withheld.
 
+**Background:** [A prompt-injection gate for my AI agent: what worked, what didn’t, and the benchmark](https://juraj.bednar.io/en/blog-en/2026/09/28/a-prompt-injection-gate-for-my-ai-agent-what-worked-what-didnt-and-the-benchmark/)
+
 **Install:** follow [`INSTALL.md`](INSTALL.md). It is written so your Hermes agent can do most of it
 for you. In short: `hermes plugins install jooray/hermes-firewall/hermes-plugin/prompt-firewall --enable`,
 a Venice API key in a file, optionally Tesseract for images, then a restart. It needs no second
