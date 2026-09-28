@@ -80,6 +80,8 @@ parses from tool results (exit codes, failure detection).
 `WARN_ONLY=1` never blocks: what would have been blocked is only logged as `flagged`. Run with it
 for a while on real traffic, review the flagged entries, then remove the line to start blocking.
 
+Files read with `read_file` or `search_files` block at a higher score (0.6, `PROMPT_FIREWALL_LOCAL_FILE_BLOCK`) than everything else (0.38). A file on the agent's own disk is far less likely to hold an attack than a web page or an email, and the agent's own notes (task lists, "next: do X") are what score just above 0.38 in practice. On the benchmark this costs 4.3 points of recall (84.2% instead of 88.5% of attacks) and cuts benign blocks from 2.8% to 1.0%. The looser level also covers a web page the agent saved to disk and then reads back. Set the variable to 0.38 to use one level everywhere. Scores between the two levels are logged as `flagged`.
+
 Scanning failures (no Venice credit, Venice down, a bug) **fail open** by default: content passes
 through unscanned so the agent keeps working, and the log records it. Content already found to be
 an injection is blocked even if a later part of the same result fails to scan. For strict setups,

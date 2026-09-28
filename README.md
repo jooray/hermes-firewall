@@ -36,6 +36,8 @@ machine and installs nothing into Hermes' Python environment.
    hidden with certain techniques (invisible Unicode, base64, a sentence in an HTML `id`, tiny or
    faint image text) and results the scanner could not fully read (no OCR, a failed OCR run, an
    undecodable or remote image).
+   Files read with Hermes' own file tools use a higher block threshold than web, MCP and shell
+   results, because local files are far less likely to carry an attack ([`INSTALL.md`](INSTALL.md)).
 4. **Log** every scan, without the scanned content, to `~/.hermes/firewall/scans.jsonl`.
 
 The plugin wraps Hermes' `tool_execution` middleware, so the scan finishes before a result enters

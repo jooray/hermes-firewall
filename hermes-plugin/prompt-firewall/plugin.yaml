@@ -1,5 +1,5 @@
 name: prompt-firewall
-version: "0.3.1"
+version: "0.3.2"
 description: "Scan untrusted tool results (web, MCP, email, files, images) for prompt injection before they enter the model's context. Local extraction and OCR, scoring by Jev (Venice Decisions API)."
 author: "hermes-firewall contributors"
 kind: standalone
@@ -15,6 +15,7 @@ optional_env:
   - PROMPT_FIREWALL_MIN_WORDS        # results with fewer words are not scanned (default 3)
   - PROMPT_FIREWALL_MAX_IMAGES       # images scanned per result (default 8); more are logged as not fully scanned
   - PROMPT_FIREWALL_SKIP_TOOLS       # comma-separated extra tools never scanned (every other tool is)
+  - PROMPT_FIREWALL_LOCAL_FILE_BLOCK # block level for read_file/search_files (default 0.6; other tools use the policy's 0.38)
   - FIREWALL_OCR                     # auto (default) | apple | tesseract | rapidocr | none
   - PROMPT_FIREWALL_GATEWAY          # "1" = also scan inbound chat from non-owners (off by default)
   - PROMPT_FIREWALL_OWNER_IDS        # comma-separated gateway user ids never scanned

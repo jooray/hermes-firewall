@@ -64,6 +64,14 @@ QUARANTINE = Path(os.path.expanduser(os.environ.get("HERMES_HOME", "~/.hermes"))
 # Results with fewer words than this are not worth a scan ({"success": true}, "ok", a file path).
 # A classic override attempt fits in three words.
 MIN_WORDS = int(os.environ.get("PROMPT_FIREWALL_MIN_WORDS", "3"))
+# Hermes' own file tools block at a higher score than everything else. A file on the agent's disk
+# is far less likely to carry an attack than a web page or an email, and the agent's own notes (task
+# lists, "next: do X") are what score just above the default block level. On the benchmark test
+# split, 0.6 instead of the fitted 0.38 catches 84.2% of attacks instead of 88.5% and blocks 1.0% of
+# benign items instead of 2.8%. The looser level also applies to a web page the agent saved to disk
+# and then reads with read_file. Set it to the policy's block value to turn this off.
+LOCAL_FILE_TOOLS = {"read_file", "search_files"}
+LOCAL_FILE_BLOCK = float(os.environ.get("PROMPT_FIREWALL_LOCAL_FILE_BLOCK", "0.6"))
 MAX_IMAGES = int(os.environ.get("PROMPT_FIREWALL_MAX_IMAGES", "8"))  # more are marked unscanned
 MAX_IMAGE_BYTES = 15 * 1024 * 1024
 _HEADERS = {"Authorization": f"Bearer {TOKEN}"} if TOKEN else {}
@@ -501,9 +509,13 @@ def on_tool_execution(*, tool_name: str = "", args: Any = None, next_call=None, 
             if blocked:
                 return _stub(tool_name, {"verdict": "unavailable", "reasons": ["firewall unreachable"]})
             return result
+        if v == "injection" and tool_name in LOCAL_FILE_TOOLS and (verdict.get("score") or 0) < LOCAL_FILE_BLOCK:
+            verdict, v = dict(verdict, verdict="suspicious"), "suspicious"  # below the local-file level
         log.info("prompt-firewall %s -> %s %s %s", tool_name, v, verdict.get("score"), verdict.get("reasons"))
         rec = dict(base, verdict=v, score=verdict.get("score"), reasons=verdict.get("reasons") or [],
                    flags=verdict.get("flags") or [], ms=ms)
+        if tool_name in LOCAL_FILE_TOOLS:
+            rec["block_at"] = LOCAL_FILE_BLOCK
         if err is not None:
             rec["error"] = f"later part not scanned: {err}"[:200]
         if v == "injection" and mode in ("closed", "open") and not WARN_ONLY:

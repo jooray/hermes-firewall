@@ -431,3 +431,25 @@ def test_rejections_match_hermes_source():
     spec.loader.exec_module(mod)
     entries, _ = normalize_tool_call_entries(BATCH_ARGS)
     assert mod._is_hermes_bridge_error("tool_call", BATCH_ARGS, json.dumps({"error": local_batch_error(entries)}))
+
+
+def _scored(plugin, monkeypatch, score):
+    monkeypatch.setattr(plugin, "_scan_parts", lambda *a: ({"verdict": "injection" if score >= 0.38 else "safe",
+                                                            "score": score, "reasons": []}, None, 0))
+
+
+@pytest.mark.parametrize("score,blocked", [(0.45, False), (0.59, False), (0.6, True), (0.9, True)])
+def test_local_files_block_at_their_own_level(fresh, monkeypatch, score, blocked):
+    _scored(fresh, monkeypatch, score)
+    out = run(fresh, "read_file", {"path": "/notes/todo.md"}, "Next: email Anna and ship the release." + LONG)
+    assert out.startswith("{\"firewall\"") == blocked
+    rec = last_log(fresh)
+    assert rec["action"] == ("blocked" if blocked else "flagged") and rec["block_at"] == 0.6
+    assert rec["verdict"] == ("injection" if blocked else "suspicious")
+
+
+@pytest.mark.parametrize("tool", ["web_extract", "mcp__web__fetch", "delegate_task", "some_new_tool"])
+def test_other_tools_keep_the_policy_level(fresh, monkeypatch, tool):
+    _scored(fresh, monkeypatch, 0.45)
+    assert run(fresh, tool, {}, "Next: email Anna and ship the release." + LONG).startswith("{\"firewall\"")
+    assert "block_at" not in last_log(fresh)
