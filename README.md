@@ -4,6 +4,22 @@ A prompt-injection gate for [Hermes Agent](https://github.com/NousResearch/herme
 untrusted content before the agent's model sees it: web pages, MCP and tool results, fetched email,
 files and images. Each result is either passed unchanged or withheld.
 
+<!-- jooray-links:start -->
+### More from me
+
+**Related projects**
+
+- [venice-frontend](https://github.com/jooray/venice-frontend): alternative Venice.ai front-end for image, video and chat
+- [venice-image](https://github.com/jooray/venice-image): generate images with the Venice API from the command line
+- [video-summarizer](https://github.com/jooray/video-summarizer): summarize video transcripts with the Venice API
+- [hermes-venice-model-switcher](https://github.com/jooray/hermes-venice-model-switcher): DIEM-aware model switcher for Hermes Agent on Venice
+- [venice-e2ee-proxy](https://github.com/jooray/venice-e2ee-proxy): local proxy adding end-to-end encryption to Venice requests
+
+**Full project showcase:** [hermes-firewall in my project showcase](https://juraj.bednar.io/showcase/#AI-09), or [all my projects](https://juraj.bednar.io/showcase/).
+
+I write about building things on [my blog](https://juraj.bednar.io/en/blog-en/). I also wrote a cypherpunk novel, [Tamers of Entropy](https://tamersofentropy.net/), and there is a [trailer](https://tamersofentropy.net/#trailer).
+<!-- jooray-links:end -->
+
 **Background:** [A prompt-injection gate for my AI agent: what worked, what didn’t, and the benchmark](https://juraj.bednar.io/en/blog-en/2026/09/28/a-prompt-injection-gate-for-my-ai-agent-what-worked-what-didnt-and-the-benchmark/)
 
 **Install:** follow [`INSTALL.md`](INSTALL.md). It is written so your Hermes agent can do most of it
