@@ -1,21 +1,59 @@
 name: prompt-firewall
-version: "0.3.2"
+version: "0.4.0"
 description: "Scan untrusted tool results (web, MCP, email, files, images) for prompt injection before they enter the model's context. Local extraction and OCR, scoring by Jev (Venice Decisions API)."
 author: "hermes-firewall contributors"
 kind: standalone
 provides_hooks:
   - pre_gateway_dispatch
+# Per-profile settings: plugins.entries.prompt-firewall.settings.<key> in that profile's config.yaml.
+# Each one overrides the environment variable named after it for that profile only. Unset keys use
+# the environment (PROMPT_FIREWALL_<KEY>), then the plugin's default.
+config_schema:
+  warn_only:
+    type: bool
+    description: "true = never block, only log what would be blocked"
+  on_error:
+    type: str
+    description: "open (default) | closed: what to do with content when scanning fails"
+  on_incomplete:
+    type: str
+    description: "pass | block: content part of which could not be scanned; unset follows on_error"
+  local_file_block:
+    type: float
+    description: "block level for local files and local shell output (default 0.6)"
+  min_words:
+    type: int
+    description: "results with fewer words are not scanned (default 3)"
+  max_images:
+    type: int
+    description: "images scanned per result (default 8)"
+  skip_tools:
+    type: list
+    description: "extra tools never scanned"
+  external_paths:
+    type: list
+    description: "directories whose files count as outside content when read (mail stores, downloads)"
+  trusted_commands:
+    type: list
+    description: "extra shell command names whose output is only logged, never blocked"
+  venice_key_file:
+    type: str
+    description: "file holding this profile's Venice API key (the key itself never goes in config.yaml)"
 optional_env:
   - PROMPT_FIREWALL_VENICE_KEY_FILE  # file holding a Venice API key (recommended: a dedicated key)
   - PROMPT_FIREWALL_VENICE_KEY       # or the key itself; falls back to VENICE_API_KEY
   - PROMPT_FIREWALL_WARN_ONLY        # "1" = never block, only log what would be blocked (recommended at first)
-  - PROMPT_FIREWALL_ON_ERROR         # "open" (default): pass content through unscanned when scanning fails; "closed": withhold (except local shell output)
-  - PROMPT_FIREWALL_BREAKER_SECONDS  # after a scanning failure, skip scanning this long (default 60)
+  - PROMPT_FIREWALL_ON_ERROR         # "open" (default): pass content through unscanned when scanning fails; "closed": withhold (except trusted shell commands)
+  - PROMPT_FIREWALL_ON_INCOMPLETE    # "pass" | "block": content part of which could not be scanned; default follows ON_ERROR
+  - PROMPT_FIREWALL_BREAKER_SECONDS  # after a scanner outage, skip scanning this long (default 60)
   - PROMPT_FIREWALL_TIMEOUT          # seconds per scanner request (default 5)
+  - PROMPT_FIREWALL_SCAN_DEADLINE    # seconds for the whole scan of one result (default 30)
   - PROMPT_FIREWALL_MIN_WORDS        # results with fewer words are not scanned (default 3)
   - PROMPT_FIREWALL_MAX_IMAGES       # images scanned per result (default 8); more are logged as not fully scanned
   - PROMPT_FIREWALL_SKIP_TOOLS       # comma-separated extra tools never scanned (every other tool is)
-  - PROMPT_FIREWALL_LOCAL_FILE_BLOCK # block level for read_file/search_files (default 0.6; other tools use the policy's 0.38)
+  - PROMPT_FIREWALL_LOCAL_FILE_BLOCK # block level for local files and local shell output (default 0.6; external content uses the policy's 0.38)
+  - PROMPT_FIREWALL_EXTERNAL_PATHS   # comma-separated directories whose files count as outside content
+  - PROMPT_FIREWALL_TRUSTED_COMMANDS # comma-separated extra shell commands whose output is only logged
   - FIREWALL_OCR                     # auto (default) | apple | tesseract | rapidocr | none
   - PROMPT_FIREWALL_GATEWAY          # "1" = also scan inbound chat from non-owners (off by default)
   - PROMPT_FIREWALL_OWNER_IDS        # comma-separated gateway user ids never scanned

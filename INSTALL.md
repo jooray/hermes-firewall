@@ -80,27 +80,59 @@ parses from tool results (exit codes, failure detection).
 `WARN_ONLY=1` never blocks: what would have been blocked is only logged as `flagged`. Run with it
 for a while on real traffic, review the flagged entries, then remove the line to start blocking.
 
-Files read with `read_file` or `search_files` block at a higher score (0.6, `PROMPT_FIREWALL_LOCAL_FILE_BLOCK`) than everything else (0.38). A file on the agent's own disk is far less likely to hold an attack than a web page or an email, and the agent's own notes (task lists, "next: do X") are what score just above 0.38 in practice. On the benchmark this costs 4.3 points of recall (84.2% instead of 88.5% of attacks) and cuts benign blocks from 2.8% to 1.0%. The looser level also covers a web page the agent saved to disk and then reads back. Set the variable to 0.38 to use one level everywhere. Scores between the two levels are logged as `flagged`.
+Content is judged by where it came from, not by which tool read it. Content from outside (web, MCP,
+email, `gh`, `curl`/`wget` and other fetch commands, the files those commands save, Hermes' own spill
+files of large results) blocks at the policy's level, 0.38. Local content (files read with
+`read_file`/`search_files`, output of local shell commands such as `cat notes.md` or
+`python report.py`) blocks at a higher level, 0.6 (`PROMPT_FIREWALL_LOCAL_FILE_BLOCK`): the agent's
+own notes (task lists, "next: do X") are what score just above 0.38 in practice. On the benchmark
+this costs 4.3 points of recall (84.2% instead of 88.5% of attacks) and cuts benign blocks from
+2.8% to 1.0%. Set the variable to 0.38 to use one level everywhere. Scores between the two levels
+are logged as `flagged`. If mail, downloads or other outside content lands in a directory the agent
+reads with file tools, list it in `PROMPT_FIREWALL_EXTERNAL_PATHS` (comma-separated) so it is judged
+as outside content.
+
+Output of a short list of commands that only report on the agent's own work (`git status`,
+`git commit`, `mkdir`, `echo`, …) is never blocked, only logged. `PROMPT_FIREWALL_TRUSTED_COMMANDS`
+adds command names to that list.
 
 Scanning failures (no Venice credit, Venice down, a bug) **fail open** by default: content passes
 through unscanned so the agent keeps working, and the log records it. Content already found to be
 an injection is blocked even if a later part of the same result fails to scan. For strict setups,
-`PROMPT_FIREWALL_ON_ERROR=closed` withholds every scanned source when scanning fails, except local
-shell output. Every setting is listed in `hermes-plugin/prompt-firewall/plugin.yaml`.
+`PROMPT_FIREWALL_ON_ERROR=closed` withholds every scanned source when scanning fails, except the
+trusted commands above. With it, content the scan could not fully read (an image without OCR, a
+remote or oversized image, a part Jev refused) is withheld too; `PROMPT_FIREWALL_ON_INCOMPLETE`
+(`pass` or `block`) sets that separately. Every setting is listed in
+`hermes-plugin/prompt-firewall/plugin.yaml`.
+
+**Several profiles:** the scan log, quarantine and release list live under each profile's own Hermes
+home. Settings can differ per profile in that profile's `config.yaml`; they override the
+environment for that profile only:
+
+```yaml
+plugins:
+  entries:
+    prompt-firewall:
+      settings:
+        warn_only: true
+        venice_key_file: ~/.venice-firewall-key-work   # a path, never the key itself
+```
 
 ### What gets scanned
 
 | Source | Examples | On injection | When scanning fails |
 |---|---|---|---|
-| External content | `web_*`, `x_search`, `browser_*`, `mcp_*`, `vision_analyze`, `computer_use`, shell commands that fetch (`curl`, `wget`, `himalaya`, URLs) and their background jobs | blocked | passed, or withheld with `ON_ERROR=closed` |
-| Local content and unknown tools | `read_file`, `search_files`, `delegate_task`, `session_search`, any tool not listed in the plugin | blocked | passed, or withheld with `ON_ERROR=closed` |
-| Local shell output | `terminal`, `execute_code`, `process_manage` for local commands | logged only | passed |
-| Cron script output | the body of the `## Script Output` block of a scheduled job's prompt | blocked | passed, or withheld with `ON_ERROR=closed` |
+| External content | `web_*`, `x_search`, `browser_*`, `mcp_*`, `vision_analyze`, `computer_use`, shell commands and code that fetch (`curl`, `wget`, `gh`, `himalaya`, URLs, Python `requests`/`imaplib`), their background jobs, files they saved, Hermes' spill files, `PROMPT_FIREWALL_EXTERNAL_PATHS` | blocked at 0.38 | passed, or withheld with `ON_ERROR=closed` |
+| Other tools | `delegate_task`, `session_search`, any tool not listed in the plugin | blocked at 0.38 | passed, or withheld with `ON_ERROR=closed` |
+| Local content | `read_file`, `search_files`, other `terminal`/`execute_code`/`process_manage` output | blocked at 0.6 | passed, or withheld with `ON_ERROR=closed` |
+| Trusted commands | `git status`, `git commit`, `mkdir`, `echo`, … (every part of the command line) | logged only | passed |
+| Cron script output | the body of the `## Script Output` block of a scheduled job's prompt | blocked at 0.38 | passed, or withheld with `ON_ERROR=closed` |
 | Not scanned | the agent's own state and actions: `memory`, `todo_list`, `write_file`, `patch`, `send_message`, generators, UI tools; results under 3 words | | |
 
 Images in a result are OCR'd and scanned (up to 8 per result). Images over that limit, remote image
 URLs (the model provider fetches those itself), images that cannot be decoded and images whose OCR
-failed are logged as `flagged` with the reason, never as `passed`. The same goes for content hidden
+failed are logged as `flagged` with the reason, never as `passed` (withheld with
+`ON_INCOMPLETE=block`). The same goes for content hidden
 with tricks like invisible Unicode or near-white image text that scores below the block threshold.
 Inbound chat messages are not scanned unless `PROMPT_FIREWALL_GATEWAY=1`.
 `PROMPT_FIREWALL_SKIP_TOOLS` adds tools to the not-scanned list.
@@ -125,25 +157,39 @@ outcomes mean:
 | `action` | Meaning |
 |---|---|
 | `passed` | scanned, looked safe |
-| `flagged` | passed unchanged, but worth a look: suspicious score, hidden content, a part that could not be scanned, or an injection that was not blocked (warn-only, local shell output) |
+| `flagged` | passed unchanged, but worth a look: suspicious score, hidden content, a part that could not be scanned, an injection that was not blocked (warn-only, trusted commands), or a local score between 0.38 and 0.6 |
 | `blocked` | injection; replaced by a stub, original in `~/.hermes/firewall/quarantine/` |
 | `passed-unavailable` | scanning failed, content passed unscanned (the `error` field says why, e.g. a missing key file) |
 | `passed-unscanned` | scanner paused for a minute after a failure; content passed unscanned |
 | `blocked-unavailable` | scanning failed and `ON_ERROR=closed`: content withheld |
+| `blocked-incomplete` | part of the result could not be scanned and `ON_INCOMPLETE=block` (the default with `ON_ERROR=closed`): content withheld, original in the quarantine |
+| `passed-released` | the owner released exactly this content earlier (see below) |
 | `passed-trusted` | not scanned: Hermes' own rejection of a malformed `tool_call`, recognised by rebuilding the exact message from that call's arguments. It is addressed to the model, so it would otherwise score as an injection |
 
-A failure to reach Venice pauses scanning for a minute (`PROMPT_FIREWALL_BREAKER_SECONDS`), so an
-outage does not add a timeout to every tool call. A malformed image does not pause anything; it is
-only logged with its own result.
+A failure to reach Venice (network, key, credit, rate limit) pauses scanning for a minute
+(`PROMPT_FIREWALL_BREAKER_SECONDS`), so an outage does not add a timeout to every tool call; the log
+row then has `"outage": true`. A failure caused by one input (a malformed image, a page Jev refuses,
+a result too long to scan within `PROMPT_FIREWALL_SCAN_DEADLINE`, 30 s) does not pause anything; it
+is only logged with its own result.
 
 The quarantine directory holds the full original of every blocked result, so treat it as
 sensitive. Review it for false positives, and delete old files when you no longer need them. After
 updating the plugin, restart Hermes.
 
+**Releasing a false positive (owner only).** After reading a quarantined original and deciding it
+is harmless, release exactly that content:
+
+```bash
+python3 ~/.hermes/plugins/prompt-firewall/release.py fw-20260929-2b0e42
+```
+
+The same content then passes (`passed-released`); any change to it is scanned again. This is safer
+than raising a threshold or skipping a tool. Run it yourself; don't ask the agent to.
+
 The log never contains the scanned content. To list everything that was not simply passed:
 
 ```bash
-jq -r 'select(.action != "passed") | [.ts, .tool, .action, .score, (.reasons|join("; "))] | @tsv' ~/.hermes/firewall/scans.jsonl
+jq -r 'select(.action != "passed") | [.ts, .tool, .mode, .action, .score, ((.reasons // [])|join("; "))] | @tsv' ~/.hermes/firewall/scans.jsonl
 ```
 
 ## Update and uninstall

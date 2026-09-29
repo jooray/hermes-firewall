@@ -24,6 +24,7 @@ INCOMPLETE_FLAGS = {
     "ocr_failed": "image text not read (OCR failed)",
     "image_unreadable": "image could not be decoded",
     "scan_truncated": "content longer than the detector's chunk limit; the rest was not scored",
+    "scan_incomplete": "part of the content could not be scored",
 }
 
 REASON = {
@@ -93,6 +94,9 @@ class Policy:
         else:
             verdict = "safe"
         reasons = [REASON.get(q, q) for q in self.questions if sig.get(q, 0) >= 0.8 and q in REASON]
+        if not reasons and s >= self.warn:  # near the threshold no question is sure: name the closest
+            q = max(self.questions, key=lambda q: sig.get(q, 0.0))
+            reasons.append(f"closest: {REASON.get(q, q)} ({sig.get(q, 0.0):.2f})")
         reasons += [f"hidden content: {f}" for f in hidden]
         reasons += [f"not fully scanned: {INCOMPLETE_FLAGS[f]}" for f in incomplete]
         return {"verdict": verdict, "score": round(s, 4), "reasons": reasons}

@@ -6,8 +6,8 @@
  "agg": "max",
  "dev_duplicates_in_test": 92,
  "dup_by_source": {
-  "nostr/0": 56,
   "carrier/0": 23,
+  "nostr/0": 56,
   "bipia_email/0": 13
  },
  "errors": {
@@ -74,7 +74,7 @@
     "n": 822,
     "attacks": 436,
     "benign": 386,
-    "auc": 0.9815355088653325,
+    "auc": 0.9816454342349193,
     "planted_email_auc": 1.0,
     "block": 0.38,
     "warn": 0.2,
@@ -97,7 +97,7 @@
     "n": 730,
     "attacks": 436,
     "benign": 294,
-    "auc": 0.980781532796605,
+    "auc": 0.9809258565811646,
     "planted_email_auc": 0.9999999999999999,
     "block": 0.38,
     "warn": 0.2,

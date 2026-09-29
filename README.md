@@ -20,9 +20,11 @@ machine and installs nothing into Hermes' Python environment.
    - `<meta>` content, JSON-LD, and `<script>` strings and comments;
    - invisible Unicode tag characters, and decoded base64.
 
-   Fragments shorter than three words in attributes and scripts are dropped as markup noise. Long
-   random tokens (ids, keys, base64) become a placeholder, unless they are words joined by `_` or
-   `-`, which stay readable.
+   Short values of markup attributes (`class`, `href`, …) and short script strings are dropped as
+   noise; short phrases in other attributes are kept together in page order, so an instruction split
+   across several `data-*` attributes still reads as one. Long random tokens (ids, keys, base64)
+   become a placeholder, unless they are words joined by `_` or `-`, which stay readable. Invisible
+   Unicode is decoded before the scanner decides whether a result is too short to scan.
 
    Images are OCR'd (Tesseract, or Apple Vision on macOS if `ocrmac` is installed), including small
    print and near-white text. Their metadata is read too: EXIF, XMP, comments, and bytes after the
@@ -36,16 +38,20 @@ machine and installs nothing into Hermes' Python environment.
    hidden with certain techniques (invisible Unicode, base64, a sentence in an HTML `id`, tiny or
    faint image text) and results the scanner could not fully read (no OCR, a failed OCR run, an
    undecodable or remote image).
-   Files read with Hermes' own file tools use a higher block threshold than web, MCP and shell
-   results, because local files are far less likely to carry an attack ([`INSTALL.md`](INSTALL.md)).
-4. **Log** every scan, without the scanned content, to `~/.hermes/firewall/scans.jsonl`.
+   Local content (files and the output of local shell commands) uses a higher block threshold than
+   content from outside (web, MCP, email, fetch commands and the files they save), because the
+   agent's own notes are what score just above the lower one ([`INSTALL.md`](INSTALL.md)).
+4. **Log** every scan, without the scanned content, to `~/.hermes/firewall/scans.jsonl`: verdict,
+   score, per-question signals, flags, and Hermes' session and tool-call ids. The owner can release
+   one reviewed false positive by its content hash (`release.py`), without loosening anything else.
 
 The plugin wraps Hermes' `tool_execution` middleware, so the scan finishes before a result enters
 the transcript. Every tool is scanned except a short list whose results carry no outside content
 (memory, todo, writes, UI actions); [`INSTALL.md`](INSTALL.md) has the full table. A second hook,
 `llm_request`, covers cron script output pasted into prompts. Scanning failures, such as no Venice
 credit or an outage, **fail open** by default, so the agent keeps working, and the log records every
-unscanned result. Details: [`docs/hermes-integration.md`](docs/hermes-integration.md).
+unscanned result. An injection already found in part of a result stays blocked even when a later part
+fails. Details: [`docs/hermes-integration.md`](docs/hermes-integration.md).
 
 ## How well it works
 
@@ -101,7 +107,10 @@ macOS runs it on efficiency cores.
 ## Development
 
 ```bash
-uv run --no-project --with httpx --with pytest --with pillow pytest hermes-plugin/test_plugin.py firewall/tests
+uv run --no-project --with httpx --with pytest --with pillow --with snowballstemmer \
+    pytest hermes-plugin/test_plugin.py firewall/tests
+# HERMES_AGENT_SRC=/path/to/hermes-agent (default ~/projects/hermes-agent) enables the test that
+# pins Hermes' own tool_call error wording; a checkout that is present but not importable fails it.
 hermes-plugin/sync_core.sh    # after changing firewall/src
 ```
 

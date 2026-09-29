@@ -83,12 +83,21 @@ _WORD = re.compile(r"[A-Z]?[a-z]{1,19}|[A-Z]{2,20}")
 
 def _joined_words(token: str) -> list[str] | None:
     """Words of a token that is really a sentence with its spaces replaced
-    (Ignore_previous_instructions, reveal-the-system-prompt): three or more
-    plain words, no digits. Random ids and base64 fail this."""
+    (Ignore_previous_instructions, reveal-the-system-prompt2): three or more
+    parts, at least three of them plain words (digits at either end allowed), three
+    quarters of all parts words, and at most one character in ten a digit. Random ids,
+    UUIDs and base64 fail this."""
     parts = [x for x in _JOINER.split(token.removeprefix("nostr:")) if x]
-    if len(parts) >= 3 and all(_WORD.fullmatch(x) for x in parts):
-        return parts
-    return None
+    if len(parts) < 3 or sum(c.isdigit() for c in token) * 10 > sum(c.isalnum() for c in token):
+        return None  # ids and hashes (UUIDs, hex) are digit-heavy
+    words = sum(bool(_WORD.fullmatch(x.strip("0123456789"))) for x in parts)
+    return parts if words >= 3 and words >= 0.75 * len(parts) else None
+
+
+def restore_joined(value: str) -> str:
+    """A single token that is a sentence with its spaces replaced, with the spaces restored."""
+    words = _joined_words(value) if value and not any(c.isspace() for c in value) else None
+    return " ".join(words) if words else value
 
 
 def collapse_opaque(text: str) -> str:
@@ -110,7 +119,8 @@ def looks_like_html(text: str) -> bool:
 # (curl, raw fetches) reads every attribute, comment and script, so extraction keeps the
 # visible text and adds everything a human would not see: comments, hidden elements, and any
 # attribute value, script string or script comment that reads as natural language (three or
-# more words). Shorter fragments in attributes and scripts are dropped as markup noise.
+# more words). Shorter script fragments and short values of markup attributes (class, href, ...)
+# are dropped as noise; short word-only values of other attributes are kept (MARKUP_ATTRS).
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param",
         "source", "track", "wbr"}
 RAW_TEXT = {"script", "style", "noscript", "template", "textarea"}
@@ -118,6 +128,21 @@ A11Y_ATTRS = {"alt", "title", "aria-label", "aria-description", "placeholder", "
 # id values cannot legally contain spaces, so a sentence in an id is a deliberate plant. Real
 # sites put UI strings in data-* and word lists in class, so those are scored but not flagged.
 FLAG_ATTRS = {"id"}
+# Attributes whose short values are markup, not text: they are dropped when shorter than a
+# sentence. Short values of every other attribute (data-*, aria-*, value, custom ones) that are
+# two or more plain words are kept together in document order, so an instruction split across
+# several attributes still reaches the detector in one piece. Single words are dropped: on real
+# pages they are mostly theme, widget and state names.
+MARKUP_ATTRS = {"class", "id", "style", "href", "src", "srcset", "rel", "type", "lang", "dir", "width",
+                "height", "target", "role", "tabindex", "for", "name", "charset", "http-equiv", "property",
+                "itemprop", "itemtype", "itemscope", "media", "sizes", "loading", "decoding", "crossorigin",
+                "integrity", "referrerpolicy", "xmlns", "viewbox", "d", "fill", "stroke", "transform",
+                "content", "method", "action", "enctype", "autocomplete", "inputmode", "align", "valign",
+                "colspan", "rowspan", "border", "datetime", "pattern", "nonce", "slot", "part", "async",
+                "defer", "hidden", "draggable", "spellcheck", "translate", "as", "accept", "form", "hreflang",
+                "accesskey", "autocapitalize", "enterkeyhint", "xml:lang", "color-scheme"}
+NOISE_VALUES = {"true", "false", "on", "off", "yes", "no", "none", "auto", "null", "undefined"}
+WORDS_ONLY = re.compile(r"[^\W\d_]{2,}(?:[,;:]?\s+[^\W\d_]+)+[.!?]?")  # two or more words
 BLOCK = {"p", "div", "br", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article",
          "header", "footer", "td", "th", "pre", "blockquote", "ul", "ol", "table", "hr"}
 STRING_LITERAL = re.compile(r'"((?:[^"\\\n]|\\.){8,})"|\'((?:[^\'\\\n]|\\.){8,})\'|`([^`]{8,})`')
@@ -135,6 +160,7 @@ class _HTMLCollector(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.visible, self.hidden, self.a11y, self.meta, self.attr_text, self.code = [], [], [], [], [], []
+        self.fragments = []      # short word-only attribute values, in document order
         self.stack = []          # (tag, is_hidden) for non-void open tags
         self.raw = None          # inside script/style/...
         self.never_shown_hits = 0
@@ -158,6 +184,10 @@ class _HTMLCollector(HTMLParser):
                 self.attr_text.append(f"{k}: {v}")
                 if k in FLAG_ATTRS and natural_language(v, 4):
                     self.never_shown_hits += 1
+            elif k not in MARKUP_ATTRS and natural_language(restore_joined(v)):
+                self.attr_text.append(f"{k}: {restore_joined(v)}")  # data-x="Ignore_previous_..."
+            elif k not in MARKUP_ATTRS and v.lower() not in NOISE_VALUES and WORDS_ONLY.fullmatch(v):
+                self.fragments.append(v)
         if tag in BLOCK:
             (self.hidden if self._hidden_now() or is_hidden else self.visible).append("\n")
         if tag in RAW_TEXT:
@@ -222,6 +252,8 @@ def html_to_text(html: str, out: Extracted) -> str:
         items = list(dict.fromkeys(items))
         if items:
             parts.append(f"[{label}]: " + " | ".join(items))
+    if sum(len(f.split()) for f in c.fragments) >= 3:  # kept in order and never deduplicated
+        parts.append("[short attribute text]: " + " ".join(c.fragments))
     if code_text:
         parts.append("[script/style text]: " + code_text)
     if hidden:

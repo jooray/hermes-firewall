@@ -29,6 +29,21 @@ log = logging.getLogger("hermes_firewall")
 MAX_IMAGE = 15 * 1024 * 1024
 
 
+class BadInput(ValueError):
+    """The request itself is malformed (bad JSON or base64, an image that cannot be decoded):
+    HTTP 400. Any other failure is the service's (no model, scoring backend down): HTTP 503,
+    so a caller never mistakes an outage for a bad image."""
+
+
+def _extract(content, kind="auto"):
+    try:
+        return extract(content, kind)
+    except Exception as e:
+        if kind == "image":  # Pillow could not open it
+            raise BadInput(f"image could not be decoded: {e}") from e
+        raise
+
+
 class Firewall:
     def __init__(self, policy: Policy):
         # At most one model is loaded, chosen by the policy's backend. "none" loads no model:
@@ -57,7 +72,7 @@ class Firewall:
     def ocr(self, image: bytes) -> dict:
         """Extraction only (OCR + metadata), no scoring. Used by callers that score elsewhere."""
         t0 = time.perf_counter()
-        ex = extract(image, "image")
+        ex = _extract(image, "image")
         return {"text": ex.text, "flags": ex.flags, "revealed": [r[:200] for r in ex.revealed][:5],
                 "ms": {"extract": round((time.perf_counter() - t0) * 1000, 1)}}
 
@@ -69,7 +84,7 @@ class Firewall:
                 self.cache.move_to_end(key)
                 return {**self.cache[key], "cached": True}
         # Text is never cut here: the detector chunks it, and a chunk limit raises scan_truncated.
-        ex = extract(image, "image") if image is not None else extract(text)
+        ex = _extract(image, "image") if image is not None else _extract(text)
         t1 = time.perf_counter()
         if self.det is None:
             raise RuntimeError("no scoring backend loaded (backend=none); use /v1/ocr")
@@ -125,24 +140,30 @@ def make_handler(fw: Firewall, token: str, allow: set[str]):
             n = int(self.headers.get("Content-Length") or 0)
             if n > MAX_IMAGE * 2:
                 return self._send(413, {"error": "too large"})
+            req, data = {}, None
             try:
                 req = json.loads(self.rfile.read(n) or b"{}")
+                if not isinstance(req, dict):
+                    raise ValueError("request body must be a JSON object")
                 if self.path == "/v1/ocr" or req.get("image"):
-                    img = req.get("image") or ""
+                    img = str(req.get("image") or "")
                     if img.startswith("data:"):
                         img = img.split(",", 1)[1]
-                    data = base64.b64decode(img)
-                    if self.path == "/v1/ocr":
-                        res = fw.ocr(data)
-                        log.info("ocr source=%s flags=%s ms=%s", req.get("source", "?"), ",".join(res["flags"]),
-                                 res["ms"]["extract"])
-                        return self._send(200, res)
-                    res = fw.scan(image=data)
-                else:
-                    res = fw.scan(text=str(req.get("text", "")))
-            except Exception as e:  # malformed input is the caller's problem, but say so
+                    data = base64.b64decode(img, validate=True)
+            except Exception as e:
+                return self._send(400, {"error": f"malformed request: {e}"[:200], "kind": "bad_input"})
+            try:
+                if self.path == "/v1/ocr":
+                    res = fw.ocr(data)
+                    log.info("ocr source=%s flags=%s ms=%s", req.get("source", "?"), ",".join(res["flags"]),
+                             res["ms"]["extract"])
+                    return self._send(200, res)
+                res = fw.scan(image=data) if data is not None else fw.scan(text=str(req.get("text", "")))
+            except BadInput as e:
+                return self._send(400, {"error": str(e)[:200], "kind": "bad_input"})
+            except Exception as e:  # the service failed, not the input: never a 400
                 log.exception("scan failed")
-                return self._send(400, {"error": str(e)[:200]})
+                return self._send(503, {"error": str(e)[:200], "kind": "unavailable"})
             log.info("scan source=%s verdict=%s score=%.3f flags=%s ms=%s", req.get("source", "?"),
                      res["verdict"], res["score"], ",".join(res["flags"]), res["ms"]["total"])
             self._send(200, res)

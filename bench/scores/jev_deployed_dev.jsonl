@@ -860,7 +860,6 @@
 {"id": "nostr_dev_1", "sha": "77ad0319a120f9f16ec741f130e534611ed67a22956ee208a2321c5422570e1f", "text": {"off_topic_task": 0.01, "choice_kind": 0.05, "n_chunks": 1, "tokens": 458, "ms": 435.9881669515744}}
 {"id": "nostr_dev_2", "sha": "77ad0319a120f9f16ec741f130e534611ed67a22956ee208a2321c5422570e1f", "text": {"off_topic_task": 0.01, "choice_kind": 0.04, "n_chunks": 1, "tokens": 458, "ms": 451.5441249823198}}
 {"id": "nostr_dev_3", "sha": "eb8c872f4b629ea8f980a3d535dfa60077c84c5f66b2994f01b43d002c2f29b6", "text": {"off_topic_task": 0.06, "choice_kind": 0.0, "n_chunks": 1, "tokens": 484, "ms": 439.3719169893302}}
-{"id": "nostr_dev_4", "sha": "30a6b8edde1ee84dfb05b5bfeb45cd5332ed20741795da0e2cc63888945fb1ec", "text": {"off_topic_task": 0.04, "choice_kind": 0.07, "n_chunks": 1, "tokens": 586, "ms": 516.3268750184216}}
 {"id": "nostr_dev_5", "sha": "aa319c71a6418086247dfebfb1ffd91e99f66ef56858fbeb2228fb676661b10d", "text": {"off_topic_task": 0.01, "choice_kind": 0.0, "n_chunks": 1, "tokens": 555, "ms": 427.7748750173487}}
 {"id": "nostr_dev_6", "sha": "77ad0319a120f9f16ec741f130e534611ed67a22956ee208a2321c5422570e1f", "text": {"off_topic_task": 0.01, "choice_kind": 0.03, "n_chunks": 1, "tokens": 458, "ms": 385.85891597904265}}
 {"id": "nostr_dev_7", "sha": "6764a42e08df08d494d1aada39593fd9d64a31300caf97924e74cdc8ae8164d4", "text": {"off_topic_task": 0.02, "choice_kind": 0.01, "n_chunks": 1, "tokens": 522, "ms": 365.16004195436835}}
@@ -899,7 +898,6 @@
 {"id": "nostr_dev_40", "sha": "10d07c78f978e43d2a080150908b11e8d63c847082b76dc3c853f1a8a6d27894", "text": {"off_topic_task": 0.18, "choice_kind": 0.03, "n_chunks": 1, "tokens": 665, "ms": 443.3289170265198}}
 {"id": "nostr_dev_41", "sha": "f0b9d84a538f0dbdc96738d5f51e36c1364b2f1e73ed099b1b939253d1e4280f", "text": {"off_topic_task": 0.21, "choice_kind": 0.06, "n_chunks": 1, "tokens": 477, "ms": 454.1796250268817}}
 {"id": "nostr_dev_42", "sha": "a76ca2b62b67f3b004aeaccad29b278a3b6fc4a6a54577392211d7c980bc6ea0", "text": {"off_topic_task": 0.01, "choice_kind": 0.02, "n_chunks": 1, "tokens": 711, "ms": 437.89775000186637}}
-{"id": "nostr_dev_43", "sha": "4a8833ac4b190a3b02a128e783e2ed1baf3ec9bd600209e1922293089060a21c", "text": {"off_topic_task": 0.06, "choice_kind": 0.02, "n_chunks": 1, "tokens": 683, "ms": 407.859124999959}}
 {"id": "nostr_dev_44", "sha": "6cd7878b730a530323b63a2adebe2927600005363ea3908724366ead338c078e", "text": {"off_topic_task": 0.01, "choice_kind": 0.0, "n_chunks": 1, "tokens": 613, "ms": 522.751500015147}}
 {"id": "nostr_dev_45", "sha": "ad5dfe9324746876013f13edff175b37de6269c19b0093549272ddbde0d289a3", "text": {"off_topic_task": 0.03, "choice_kind": 0.01, "n_chunks": 1, "tokens": 512, "ms": 418.86241699103266}}
 {"id": "nostr_dev_46", "sha": "0e4900e0b29353476bbce8d66393adfaee325618c2359761ec0e96ba0fe3bbbf", "text": {"off_topic_task": 0.0, "choice_kind": 0.0, "n_chunks": 1, "tokens": 499, "ms": 547.8081670007668}}
@@ -910,13 +908,11 @@
 {"id": "nostr_dev_51", "sha": "77ad0319a120f9f16ec741f130e534611ed67a22956ee208a2321c5422570e1f", "text": {"off_topic_task": 0.01, "choice_kind": 0.04, "n_chunks": 1, "tokens": 458, "ms": 450.3225000225939}}
 {"id": "nostr_dev_52", "sha": "dcd629f975b7701df010a3eab96d21a8e1888c02cfb29e51d8492325c2364925", "text": {"off_topic_task": 0.05, "choice_kind": 0.08, "n_chunks": 1, "tokens": 482, "ms": 393.1733330246061}}
 {"id": "nostr_dev_53", "sha": "0c5e8e27bf2bd6aaf30a6500236ae654e63afcb7b622e8cb4de68dd968ea4186", "text": {"off_topic_task": 0.03, "choice_kind": 0.01, "n_chunks": 1, "tokens": 508, "ms": 433.91341698588803}}
-{"id": "nostr_dev_54", "sha": "1b039838bff1cd4e5b6fa4798c3085d456feba27c426a8278c11005b91e1c49b", "text": {"off_topic_task": 0.05, "choice_kind": 0.06, "n_chunks": 1, "tokens": 552, "ms": 419.445707986597}}
 {"id": "nostr_dev_55", "sha": "0f814524d8484f00b41ec04981c9034e5560d8edb213f88047661c73c9aa400f", "text": {"off_topic_task": 0.02, "choice_kind": 0.09, "n_chunks": 1, "tokens": 495, "ms": 440.61837502522394}}
 {"id": "nostr_dev_56", "sha": "b55264d8767a94f645f6442bd131028203440fdc8a19219bbee24f6ea92e712e", "text": {"off_topic_task": 0.03, "choice_kind": 0.0, "n_chunks": 1, "tokens": 541, "ms": 413.25649997452274}}
 {"id": "nostr_dev_57", "sha": "4d0aa8f88baee0fbbc44d3afa50a092869f6b36ff5fc4be4660a41d5f38f0206", "text": {"off_topic_task": 0.01, "choice_kind": 0.06, "n_chunks": 1, "tokens": 581, "ms": 678.8166660116985}}
 {"id": "nostr_dev_58", "sha": "77ad0319a120f9f16ec741f130e534611ed67a22956ee208a2321c5422570e1f", "text": {"off_topic_task": 0.01, "choice_kind": 0.03, "n_chunks": 1, "tokens": 458, "ms": 414.38004199881107}}
 {"id": "nostr_dev_59", "sha": "77ad0319a120f9f16ec741f130e534611ed67a22956ee208a2321c5422570e1f", "text": {"off_topic_task": 0.01, "choice_kind": 0.04, "n_chunks": 1, "tokens": 458, "ms": 404.3802910018712}}
-{"id": "nostr_dev_60", "sha": "38f314614c01c1f2db2739bf54416342b939afbb79563346e2c61b57afe3a2e6", "text": {"off_topic_task": 0.02, "choice_kind": 0.0, "n_chunks": 1, "tokens": 479, "ms": 439.7317499970086}}
 {"id": "nostr_dev_61", "sha": "a67ec723e579c58a66605aa91f6febb8abe41e21548d4e33408c985302752f4c", "text": {"off_topic_task": 0.0, "choice_kind": 0.0, "n_chunks": 1, "tokens": 466, "ms": 402.2833330091089}}
 {"id": "nostr_dev_62", "sha": "8dcab526e6c891b2cba089b69a8a76453cad6260e0bbe664dfac3db7ed8d3092", "text": {"off_topic_task": 0.05, "choice_kind": 0.02, "n_chunks": 1, "tokens": 577, "ms": 432.1115830098279}}
 {"id": "nostr_dev_63", "sha": "12096ff96e305aa8d456a9cb1da541a6c03a3fef9506d5be734e2f0f6a9f36b9", "text": {"off_topic_task": 0.07, "choice_kind": 0.02, "n_chunks": 1, "tokens": 459, "ms": 437.11862503550947}}
@@ -925,7 +921,6 @@
 {"id": "nostr_dev_66", "sha": "f3f985fcc6ed60a88de349a003a4d3cf610d37bcd8f9b0cd8788557517408106", "text": {"off_topic_task": 0.03, "choice_kind": 0.01, "n_chunks": 1, "tokens": 550, "ms": 452.60095898993313}}
 {"id": "nostr_dev_67", "sha": "77ad0319a120f9f16ec741f130e534611ed67a22956ee208a2321c5422570e1f", "text": {"off_topic_task": 0.01, "choice_kind": 0.04, "n_chunks": 1, "tokens": 458, "ms": 415.17283295979723}}
 {"id": "nostr_dev_68", "sha": "a82ec81664d35a99635e963b891220479a6927e08ee21b3f7ae40ced0adb7c45", "text": {"off_topic_task": 0.03, "choice_kind": 0.0, "n_chunks": 1, "tokens": 540, "ms": 415.85525003029034}}
-{"id": "nostr_dev_69", "sha": "91ca8b1fdc90fa2d530319aa18f66cc923f9328957df5b1e4d15563f6bc50bf5", "text": {"off_topic_task": 0.03, "choice_kind": 0.01, "n_chunks": 1, "tokens": 546, "ms": 457.88075000746176}}
 {"id": "nostr_dev_70", "sha": "606378bc0da520234b74946dbb315eddc3eb2f93b965ea3eb6345bf191ad5b16", "text": {"off_topic_task": 0.06, "choice_kind": 0.3, "n_chunks": 1, "tokens": 471, "ms": 438.2047919789329}}
 {"id": "nostr_dev_71", "sha": "07f39e24c72c0e6f180723536d9d0f3b4c2bc503fe950568a591efce60b60bb4", "text": {"off_topic_task": 0.01, "choice_kind": 0.0, "n_chunks": 1, "tokens": 812, "ms": 349.2404169519432}}
 {"id": "nostr_dev_72", "sha": "93c988ed8a29e007a571ee07161061b5b8258317e96fd565b4fa5243d3732123", "text": {"off_topic_task": 0.01, "choice_kind": 0.02, "n_chunks": 1, "tokens": 469, "ms": 473.98754104506224}}
@@ -1031,7 +1026,6 @@
 {"id": "zero_width_dev_att2", "sha": "1f51d3f23cc046282f0e2c32668673efcf6b2b76f2094589b589e53194cc376f", "text": {"off_topic_task": 0.45, "choice_kind": 1.0, "n_chunks": 1, "tokens": 468, "ms": 413.9945420320146}}
 {"id": "zero_width_dev_ben2", "sha": "223b55429e19546f86f921895f0225074eabe6f9a83f520267e41909356e1055", "text": {"off_topic_task": 0.09, "choice_kind": 0.07, "n_chunks": 1, "tokens": 601, "ms": 461.1000829609111}}
 {"id": "base64_dev_att0", "sha": "809c156155828f1acc4d023dbc666ba5a5dcbcd8e75424fefa4c8ce19495de7d", "text": {"off_topic_task": 0.9, "choice_kind": 0.99, "n_chunks": 1, "tokens": 484, "ms": 418.41958300210536}}
-{"id": "base64_dev_ben0", "sha": "a4330a724e9c83976976a6da6408f6350dfc8ec4ad7159179bca5f135f022437", "text": {"off_topic_task": 0.25, "choice_kind": 0.04, "n_chunks": 1, "tokens": 651, "ms": 388.2504580542445}}
 {"id": "base64_dev_att1", "sha": "bd4342145678339cb1003910b5e17afbae4fedcb08d4b486a59f5880489bca7f", "text": {"off_topic_task": 0.99, "choice_kind": 0.95, "n_chunks": 1, "tokens": 516, "ms": 417.33079100959003}}
 {"id": "base64_dev_ben1", "sha": "5c7749ec871b6866cd0276bc6ad9defb7a1d89870bf547920a957949124d80f5", "text": {"off_topic_task": 0.05, "choice_kind": 0.0, "n_chunks": 1, "tokens": 511, "ms": 400.97362495725974}}
 {"id": "base64_dev_att2", "sha": "48848b81dcb6ed8f87eb2b72a332744d3397645213232b4504584e46e8628481", "text": {"off_topic_task": 0.81, "choice_kind": 1.0, "n_chunks": 1, "tokens": 482, "ms": 419.09979103365913}}
@@ -1123,3 +1117,9 @@
 {"id": "attr_alt_dev_ben1", "sha": "b76bee7bebe91ae86d7d3f19a0e494a434f1db00e92bf681ce0cec0be14d67d6", "text": {"off_topic_task": 0.02, "choice_kind": 0.01, "n_chunks": 1, "tokens": 541, "ms": 397.6737919729203}}
 {"id": "attr_alt_dev_att2", "sha": "23a52d1a71127b1b9f3161acfbefcd8334141a523e439c4f70ae0546efa13064", "text": {"off_topic_task": 0.27, "choice_kind": 0.17, "n_chunks": 1, "tokens": 494, "ms": 519.9027079506777}}
 {"id": "attr_alt_dev_ben2", "sha": "311083968f001a4dcbe40039edb3c73d936f2c0ff2e8957fe7d734682308bb48", "text": {"off_topic_task": 0.02, "choice_kind": 0.01, "n_chunks": 1, "tokens": 514, "ms": 464.19658296508715}}
+{"id": "nostr_dev_4", "sha": "a39f6431b0a7617d80d9727cdf904609fa3066b2fdc0813d34099c5e4ef5d498", "text": {"off_topic_task": 0.03, "choice_kind": 0.08, "n_chunks": 1, "tokens": 604, "ms": 590.4249999439344}}
+{"id": "nostr_dev_43", "sha": "11f0af1eebf6474daa0d22f1ffb021b8a1312a89f3e8b260a6062768049928e8", "text": {"off_topic_task": 0.26, "choice_kind": 0.04, "n_chunks": 1, "tokens": 689, "ms": 456.6053339513019}}
+{"id": "nostr_dev_54", "sha": "8552afe0c8496fb127cc0ffe4a894100be3365e37639e9241186798cbf062c49", "text": {"off_topic_task": 0.02, "choice_kind": 0.01, "n_chunks": 1, "tokens": 556, "ms": 493.2630410185084}}
+{"id": "nostr_dev_60", "sha": "75a800e3025382f905249ccf6c3ad37aa1394b168898b16a5046e6c3606bf5cc", "text": {"off_topic_task": 0.01, "choice_kind": 0.0, "n_chunks": 1, "tokens": 492, "ms": 548.1428749626502}}
+{"id": "nostr_dev_69", "sha": "c5a4ea86cf06dceb436101aed8a03b65201fbc9cfdcc304b782ed3f50f8c627d", "text": {"off_topic_task": 0.01, "choice_kind": 0.02, "n_chunks": 1, "tokens": 562, "ms": 521.1483329767361}}
+{"id": "base64_dev_ben0", "sha": "378569d77d11cb176ad571a5e075b3c096deca506d7e48742df87661c3e019ef", "text": {"off_topic_task": 0.28, "choice_kind": 0.05, "n_chunks": 1, "tokens": 667, "ms": 441.09500001650304}}
