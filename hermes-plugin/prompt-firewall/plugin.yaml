@@ -1,6 +1,6 @@
 name: prompt-firewall
-version: "0.4.0"
-description: "Scan untrusted tool results (web, MCP, email, files, images) for prompt injection before they enter the model's context. Local extraction and OCR, scoring by Jev (Venice Decisions API)."
+version: "0.5.0"
+description: "Scan untrusted tool results (web, MCP, email, files, images) for prompt injection before they enter the model's context. Local extraction and OCR, scoring by Jev (Venice Decisions API) or a local Nimble model in Ollama."
 author: "hermes-firewall contributors"
 kind: standalone
 provides_hooks:
@@ -20,7 +20,7 @@ config_schema:
     description: "pass | block: content part of which could not be scanned; unset follows on_error"
   local_file_block:
     type: float
-    description: "block level for local files and local shell output (default 0.6)"
+    description: "block level for local files and local shell output (default: jev 0.6, nimble from its policy)"
   min_words:
     type: int
     description: "results with fewer words are not scanned (default 3)"
@@ -46,18 +46,20 @@ optional_env:
   - PROMPT_FIREWALL_ON_ERROR         # "open" (default): pass content through unscanned when scanning fails; "closed": withhold (except trusted shell commands)
   - PROMPT_FIREWALL_ON_INCOMPLETE    # "pass" | "block": content part of which could not be scanned; default follows ON_ERROR
   - PROMPT_FIREWALL_BREAKER_SECONDS  # after a scanner outage, skip scanning this long (default 60)
-  - PROMPT_FIREWALL_TIMEOUT          # seconds per scanner request (default 5)
-  - PROMPT_FIREWALL_SCAN_DEADLINE    # seconds for the whole scan of one result (default 30)
+  - PROMPT_FIREWALL_TIMEOUT          # seconds per scanner request (default 5; nimble: 60)
+  - PROMPT_FIREWALL_SCAN_DEADLINE    # seconds for the whole scan of one result (default 30; nimble: 120)
   - PROMPT_FIREWALL_MIN_WORDS        # results with fewer words are not scanned (default 3)
   - PROMPT_FIREWALL_MAX_IMAGES       # images scanned per result (default 8); more are logged as not fully scanned
   - PROMPT_FIREWALL_SKIP_TOOLS       # comma-separated extra tools never scanned (every other tool is)
-  - PROMPT_FIREWALL_LOCAL_FILE_BLOCK # block level for local files and local shell output (default 0.6; external content uses the policy's 0.38)
+  - PROMPT_FIREWALL_LOCAL_FILE_BLOCK # block level for local files and local shell output (default: jev 0.6, nimble the policy's local_block; external content uses the policy's block level)
   - PROMPT_FIREWALL_EXTERNAL_PATHS   # comma-separated directories whose files count as outside content
   - PROMPT_FIREWALL_TRUSTED_COMMANDS # comma-separated extra shell commands whose output is only logged
   - FIREWALL_OCR                     # auto (default) | apple | tesseract | rapidocr | none
   - PROMPT_FIREWALL_GATEWAY          # "1" = also scan inbound chat from non-owners (off by default)
   - PROMPT_FIREWALL_OWNER_IDS        # comma-separated gateway user ids never scanned
-  - PROMPT_FIREWALL_BACKEND          # jev (default) | service (self-hosted firewall/ service)
+  - PROMPT_FIREWALL_BACKEND          # jev (default) | nimble (local model in Ollama 0.35+) | service (self-hosted firewall/ service)
+  - PROMPT_FIREWALL_MODEL            # nimble backend: nimble:9b-q4_K_M (default, ~11 GB) or nimble:9b (8-bit, ~15 GB)
+  - PROMPT_FIREWALL_OLLAMA_URL       # nimble backend: Ollama server (default http://127.0.0.1:11434)
   - PROMPT_FIREWALL_URL              # service backend URL
   - PROMPT_FIREWALL_TOKEN            # service backend bearer token
   - PROMPT_FIREWALL_OCR_URL          # optional service used for OCR when no local engine exists

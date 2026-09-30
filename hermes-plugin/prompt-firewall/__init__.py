@@ -14,6 +14,11 @@ Backends (PROMPT_FIREWALL_BACKEND):
     (Apple Vision via ocrmac on macOS, else the `tesseract` CLI); with no OCR engine, image
     metadata is still scanned and the image is marked suspicious. PROMPT_FIREWALL_OCR_URL
     optionally points at a hermes-firewall service (/v1/ocr) to use when no local engine exists.
+  - nimble: like jev, but scored by a local System One model in Ollama 0.35+ (/v1/systemone
+    takes Jev's request format). Nothing leaves the machine. PROMPT_FIREWALL_MODEL picks the
+    model (default nimble:9b-q4_K_M; nimble:9b is the 8-bit build), PROMPT_FIREWALL_OLLAMA_URL
+    the server (default http://127.0.0.1:11434). Each model has its own fitted thresholds
+    (core/policy-<model>.json): scores from different models are not on the same scale.
   - service: send everything to the hermes-firewall service (/v1/scan, /v1/scan-image).
 
 Every scan is recorded, without content, in <HERMES_HOME>/firewall/scans.jsonl. Paths and the
@@ -50,17 +55,22 @@ import httpx
 
 log = logging.getLogger("prompt_firewall")
 
-__version__ = "0.4.0"  # keep in step with plugin.yaml
+__version__ = "0.5.0"  # keep in step with plugin.yaml
 
 # Process-level settings: from the environment, read once. The per-profile settings further down
 # (_cfg) default to these and can be overridden per profile in config.yaml.
 BACKEND = os.environ.get("PROMPT_FIREWALL_BACKEND", "jev")
+LOCAL_MODEL = BACKEND == "nimble"  # scored on this machine: slower, so longer default timeouts
+MODEL = os.environ.get("PROMPT_FIREWALL_MODEL", "nimble:9b-q4_K_M" if LOCAL_MODEL else "jev-latest")
+OLLAMA_URL = os.environ.get("PROMPT_FIREWALL_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 URL = os.environ.get("PROMPT_FIREWALL_URL", "http://127.0.0.1:9030").rstrip("/")  # service / OCR
 TOKEN = os.environ.get("PROMPT_FIREWALL_TOKEN", "")
-TIMEOUT = float(os.environ.get("PROMPT_FIREWALL_TIMEOUT", "5"))
+# Seconds per scanner request. Nimble on an M2 Max: ~2 s per message, ~15 s per 12,000-character
+# chunk, a few seconds more when Ollama has to load the model.
+TIMEOUT = float(os.environ.get("PROMPT_FIREWALL_TIMEOUT", "60" if LOCAL_MODEL else "5"))
 # The whole scan of one result (all chunks and images) must finish within this many seconds;
 # what is left is marked as not scanned.
-SCAN_DEADLINE = float(os.environ.get("PROMPT_FIREWALL_SCAN_DEADLINE", "30"))
+SCAN_DEADLINE = float(os.environ.get("PROMPT_FIREWALL_SCAN_DEADLINE", "120" if LOCAL_MODEL else "30"))
 GATEWAY = os.environ.get("PROMPT_FIREWALL_GATEWAY", "") == "1"
 WARN_ONLY = os.environ.get("PROMPT_FIREWALL_WARN_ONLY", "") == "1"
 # What happens when scanning itself fails (no Venice credit, Venice down, Jev error, plugin bug):
@@ -85,7 +95,9 @@ MIN_WORDS = int(os.environ.get("PROMPT_FIREWALL_MIN_WORDS", "3"))
 # 0.38 catches 84.2% of attacks instead of 88.5% and blocks 1.0% of benign items instead of 2.8%.
 # Content known to come from outside (a file a fetch command wrote, Hermes' spill files of large
 # results, PROMPT_FIREWALL_EXTERNAL_PATHS) is external wherever it is read from.
-LOCAL_FILE_BLOCK = float(os.environ.get("PROMPT_FIREWALL_LOCAL_FILE_BLOCK", "0.6"))
+# The nimble policies carry their own level (local_block: the score with the same dev false-positive
+# rate as Jev's 0.6); the environment variable or the profile setting overrides it.
+LOCAL_FILE_BLOCK = os.environ.get("PROMPT_FIREWALL_LOCAL_FILE_BLOCK", "")
 MAX_IMAGES = int(os.environ.get("PROMPT_FIREWALL_MAX_IMAGES", "8"))  # more are marked unscanned
 MAX_IMAGE_BYTES = 15 * 1024 * 1024
 _HEADERS = {"Authorization": f"Bearer {TOKEN}"} if TOKEN else {}
@@ -132,7 +144,7 @@ def _cfg() -> _Cfg:
     return _Cfg(
         warn_only=_as_bool(_setting("warn_only", WARN_ONLY)),
         on_error=on_error, on_incomplete=on_incomplete,
-        local_block=float(_setting("local_file_block", LOCAL_FILE_BLOCK)),
+        local_block=float(_setting("local_file_block", LOCAL_FILE_BLOCK) or _policy_local_block()),
         min_words=int(_setting("min_words", MIN_WORDS)),
         max_images=int(_setting("max_images", MAX_IMAGES)),
         skip=SKIP | set(_as_list(_setting("skip_tools", ""))),
@@ -382,20 +394,47 @@ def _venice_key() -> str:
     return key or os.environ.get("VENICE_API_KEY", "")
 
 
-def _local():
+def _score_policy():
+    """policy-jev.json, or for the nimble backend the policy fitted for MODEL. A model without one
+    is an error (logged, and handled like any scanner failure): thresholds fitted on another model
+    would run a configuration nobody measured."""
     global _pol, POLICY_ID
     if _pol is None:
         from .core.policy import Policy
-        raw = (Path(__file__).parent / "core" / "policy-jev.json").read_text()
+        name = "policy-" + (MODEL.replace(":", "-") if LOCAL_MODEL else "jev") + ".json"
+        path = Path(__file__).parent / "core" / name
+        if not path.exists():
+            have = sorted(p.name[7:-5] for p in path.parent.glob("policy-nimble-*.json"))
+            raise ScanFailed(f"no fitted policy for model {MODEL!r} ({name}); fitted: {', '.join(have)}")
+        raw = path.read_text()
         _pol = Policy(**json.loads(raw))
         POLICY_ID = hashlib.sha256(raw.encode()).hexdigest()[:12]
-    key = _venice_key()
+    return _pol
+
+
+def _policy_local_block() -> float:
+    if BACKEND in ("jev", "nimble"):
+        try:
+            return _score_policy().local_block or 0.6
+        except ScanFailed:
+            pass
+    return 0.6
+
+
+def _local():
+    pol = _score_policy()
+    key = "ollama" if LOCAL_MODEL else _venice_key()  # Ollama ignores the Authorization header
     if key not in _jev:
         from .core.jev_detector import URL as JEV_URL
         from .core.jev_detector import JevDetector
-        _jev[key] = JevDetector(key, questions=_pol.questions, timeout=TIMEOUT, attempts=2,
-                                url=os.environ.get("PROMPT_FIREWALL_JEV_URL", JEV_URL))
-    return _jev[key], _pol
+        if LOCAL_MODEL:  # one request at a time: Ollama scores them one by one anyway, so parallel
+            # requests would only queue there and eat into each one's timeout
+            _jev[key] = JevDetector(key, model=MODEL, questions=pol.questions, timeout=TIMEOUT, attempts=2,
+                                    workers=1, url=OLLAMA_URL + "/v1/systemone")
+        else:
+            _jev[key] = JevDetector(key, questions=pol.questions, timeout=TIMEOUT, attempts=2,
+                                    url=os.environ.get("PROMPT_FIREWALL_JEV_URL", JEV_URL))
+    return _jev[key], pol
 
 
 def _decide(ex) -> dict:
@@ -411,7 +450,7 @@ def _decide(ex) -> dict:
     flags = list(ex.flags) + (["scan_incomplete"] if err else [])
     v = pol.decide(sig, flags)  # incomplete-scan flags (no OCR, OCR failed, a chunk) make it suspicious
     v.update(flags=flags, signals={k: round(x, 4) for k, x in sig.items() if k in pol.questions},
-             n_chunks=sig.get("n_chunks"), backend="jev")
+             n_chunks=sig.get("n_chunks"), backend=BACKEND)
     if err is not None:
         v.update(complete=False, error=str(err)[:200], outage=err.outage)
         if v["verdict"] != "injection":  # nothing conclusive: the caller treats it as a failure
@@ -466,7 +505,7 @@ def _service(path: str, payload: dict, timeout: float) -> Optional[dict]:
 # ---- dispatch --------------------------------------------------------------------------------
 def _scan(text: str, source: str) -> dict:
     key = hashlib.sha256(text.encode("utf-8", "ignore")).hexdigest()
-    if BACKEND == "jev":
+    if BACKEND in ("jev", "nimble"):
         return _cached(key, lambda: _scan_jev(text))
 
     def call():
@@ -503,7 +542,7 @@ def _scan_image(ref: str, source: str) -> Optional[dict]:
     if data is None:
         return None
     key = hashlib.sha256(data).hexdigest()
-    if BACKEND == "jev":
+    if BACKEND in ("jev", "nimble"):
         return _cached(key, lambda: _scan_image_jev(data, source))
 
     def call():
@@ -731,6 +770,7 @@ def _audit(**rec) -> None:
         if path.exists() and path.stat().st_size > _MAX_LOG:
             path.replace(path.with_suffix(".jsonl.1"))
         rec = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "backend": BACKEND, "plugin": __version__,
+               **({"model": MODEL} if LOCAL_MODEL else {}),
                **({"policy": POLICY_ID} if POLICY_ID else {}), **rec}
         rec = {k: v for k, v in rec.items() if v is not None}
         with open(path, "a") as f:

@@ -53,6 +53,7 @@ class Policy:
     model: str = ""                       # checkpoint id ("" = backend default)
     revision: str = ""
     bits: int | None = None               # semif only: in-memory 4/8-bit quantization
+    local_block: float | None = None      # block level for local files/shell output (None: plugin default)
 
     @classmethod
     def load(cls, path: str | None, backend: str = "laya") -> "Policy":

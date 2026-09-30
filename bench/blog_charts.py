@@ -3,8 +3,10 @@
 Test items: the whole test split minus items whose extracted text also occurs in dev (identical
 detector input, see evaluate.dev_duplicates) and minus items whose extracted text changed after a
 detector was scored (corpus/test.changed_v5.json), so every detector is compared on the same text.
-Verdicts use each backend's shipped policy file: block, or pass; "flagged" (warn threshold, hidden
-content) is a log entry, not something the model sees. Writes results_blog.json and, with a
+Verdicts use each backend's shipped policy file; local System One models (Ollama, scored by
+score_ollama.py) have no shipped policy and get Jev's policy with thresholds refitted on their own
+dev scores (block @1%, warn @5% dev FPR, as for policy-jev.json). A verdict is block or pass;
+"flagged" (warn threshold, hidden content) is a log entry, not something the model sees. Writes results_blog.json and, with a
 directory argument, auc-by-slice.png and verdicts.png there.
 """
 import json
@@ -25,6 +27,8 @@ except FileNotFoundError:
     changed = set()
 DET = {  # label: (score tag, policy backend or None, score function for non-policy detectors)
     "Jev (cloud)": ("jev_deployed", "jev", None),
+    "Nimble 9B 4-bit": ("ollama_nimble-9b-q4_K_M", "refit", None),
+    "Tev1 4B": ("ollama_tev1-4b", "refit", None),
     "SemIf Qwen3.5-4B 8-bit": ("semif_q8", "semif", None),
     "SemIf Qwen3.5-4B BF16": ("semif", "semif", None),
     "SemIf Qwen3.5-4B 4-bit": ("semif_q4", "semif", None),
@@ -32,17 +36,32 @@ DET = {  # label: (score tag, policy backend or None, score function for non-pol
     "DeBERTa v2": ("deberta", None, lambda s: s["p"]),
     "Keyword regex": ("regex", None, lambda s: s["p"]),
 }
-CHART = ["Jev (cloud)", "SemIf Qwen3.5-4B 8-bit", "Laya 421M", "DeBERTa v2"]
+CHART = ["Jev (cloud)", "Nimble 9B 4-bit", "SemIf Qwen3.5-4B 8-bit", "Laya 421M", "DeBERTa v2"]
 S = {k: scores(tag, "test") for k, (tag, _, _) in DET.items()}
 ids = sorted(set(test) - dev_duplicates(dev, test) - changed)
 ids = [i for i in ids if all(i in S[k] for k in DET)]
-POL = {b: Policy(**json.loads(files("hermes_firewall").joinpath(f"policy-{b}.json").read_text()))
-       for _, b, _ in DET.values() if b}
+SD = {k: scores(tag, "dev") for k, (tag, _, _) in DET.items()}
+
+
+def shipped(b):
+    return Policy(**json.loads(files("hermes_firewall").joinpath(f"policy-{b}.json").read_text()))
+
+
+def refit(k):
+    """Jev's policy (questions, aggregation) with thresholds fitted on this model's dev scores."""
+    pol = shipped("jev")
+    v = [(pol.score(SD[k][i]["text"]), dev[i]["label"]) for i in dev if i in SD[k]]
+    pos, neg = [a for a, l in v if l], [a for a, l in v if not l]
+    return Policy(**(pol.describe() | {"block": float(pick_threshold(pos, neg, 0.01)),
+                                       "warn": float(pick_threshold(pos, neg, 0.05))}))
+
+
+POL = {k: refit(k) if b == "refit" else shipped(b) for k, (_, b, _) in DET.items() if b}
 
 
 def score_fn(k):
     _, b, f = DET[k]
-    return f if f else POL[b].score
+    return f if f else POL[k].score
 
 
 SLICES = [
@@ -69,10 +88,9 @@ for k, (_, b, _) in DET.items():
         sel = [i for i in ids if f(test[i])]
         c = {"blocked": 0, "flagged": 0, "passed": 0}
         for i in sel:
-            v = POL[b].decide(S[k][i]["text"], [x for x in test[i]["flags"] if x in HIDING_FLAGS])["verdict"]
+            v = POL[k].decide(S[k][i]["text"], [x for x in test[i]["flags"] if x in HIDING_FLAGS])["verdict"]
             c["blocked" if v == "injection" else "flagged" if v == "suspicious" else "passed"] += 1
         out["verdicts"][f"{k} | {g}"] = {"n": len(sel), **{x: 100 * y / len(sel) for x, y in c.items()}}
-SD = {k: scores(tag, "dev") for k, (tag, _, _) in DET.items()}
 out["table"] = {}
 for k in DET:  # one threshold at 2% dev FPR, like bench/compare_variants.py
     d_ids = [i for i in dev if i in SD[k]]
@@ -93,7 +111,8 @@ if len(sys.argv) > 1:
     import matplotlib.pyplot as plt
     OUT = sys.argv[1].rstrip("/") + "/"
     INK, INK2, INK3, GRID, PAPER = "#16212b", "#4a5661", "#6f7a84", "#e4e8ec", "#ffffff"
-    COL = {"Jev (cloud)": "#2a78d6", "SemIf Qwen3.5-4B 8-bit": "#eb6834", "Laya 421M": "#1baf7a", "DeBERTa v2": "#8a8f98"}
+    COL = {"Jev (cloud)": "#2a78d6", "Nimble 9B 4-bit": "#8a4fd0", "SemIf Qwen3.5-4B 8-bit": "#eb6834", "Laya 421M": "#1baf7a", "DeBERTa v2": "#8a8f98"}
+    LABEL = {"Nimble 9B 4-bit": "Nimble 4-bit (local)", "SemIf Qwen3.5-4B 8-bit": "SemIf 8-bit"}
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 11, "text.color": INK, "axes.labelcolor": INK2,
                          "xtick.color": INK3, "ytick.color": INK})
     fig, ax = plt.subplots(figsize=(10, 5.6), dpi=200)
@@ -104,7 +123,7 @@ if len(sys.argv) > 1:
         vals = [out["auc"][name][k] for k in CHART]
         ax.plot([min(vals), max(vals)], [y, y], color="#d5dbe0", lw=2, zorder=1)
         for ci, (k, v) in enumerate(zip(CHART, vals)):
-            ax.scatter(v, y + 0.09 * (ci - 1.5), s=70, color=COL[k], edgecolor=PAPER, linewidth=1.5, zorder=3, label=k if j == 0 else None)
+            ax.scatter(v, y + 0.08 * (ci - (len(CHART) - 1) / 2), s=70, color=COL[k], edgecolor=PAPER, linewidth=1.5, zorder=3, label=LABEL.get(k, k) if j == 0 else None)
     ax.set_yticks(range(n))
     ax.set_yticklabels([s[0] for s in SLICES][::-1])
     for lab in ax.get_yticklabels():
@@ -120,16 +139,17 @@ if len(sys.argv) > 1:
     for s in ax.spines.values():
         s.set_visible(False)
     ax.tick_params(length=0)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.42, 1.12), ncol=4, frameon=False, fontsize=10, handletextpad=0.3)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.42, 1.12), ncol=len(CHART), frameon=False, fontsize=10, handletextpad=0.3)
     fig.tight_layout()
     fig.savefig(OUT + "auc-by-slice.png", facecolor=PAPER)
 
     C = [("blocked", "Blocked", "#c23b3b", "white"), ("flagged", "Passed, flagged in the log", "#9aa6b1", "white"),
          ("passed", "Passed", "#d6dce1", INK)]
-    fig, ax = plt.subplots(figsize=(10, 5.6), dpi=200)
+    short = {"Jev (cloud)": "Jev", "Nimble 9B 4-bit": "Nimble 4-bit (local)", "Tev1 4B": "Tev1 4B (local)",
+             "SemIf Qwen3.5-4B 8-bit": "SemIf 8-bit", "Laya 421M": "Laya"}
+    fig, ax = plt.subplots(figsize=(10, 1.0 + 0.36 * (len(short) * len(groups) + len(groups))), dpi=200)
     fig.patch.set_facecolor(PAPER)
     ys, labels, y = [], [], 0
-    short = {"Jev (cloud)": "Jev", "SemIf Qwen3.5-4B 8-bit": "SemIf 8-bit", "Laya 421M": "Laya"}
     for gi, (g, _) in enumerate(groups):
         if gi:
             y -= 0.5

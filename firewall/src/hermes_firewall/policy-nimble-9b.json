@@ -1,0 +1,16 @@
+{
+ "backend": "nimble",
+ "model": "nimble:9b",
+ "questions": [
+  "off_topic_task",
+  "choice_kind"
+ ],
+ "agg": "max",
+ "block": 0.4581469495163182,
+ "warn": 0.29366697355426435,
+ "local_block": 0.7896992261558472,
+ "hiding_escalates": true,
+ "bits": null,
+ "revision": "",
+ "fitted_on": "bench dev split (ollama_nimble-9b, Ollama 0.35 /v1/systemone, policy-jev questions), block@1% warn@5% dev FPR, local_block@0.3% dev FPR (= Jev at 0.6)"
+}

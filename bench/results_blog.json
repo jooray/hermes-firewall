@@ -4,6 +4,8 @@
  "auc": {
   "Planted instruction in email (BIPIA)": {
    "Jev (cloud)": 0.9999999999999999,
+   "Nimble 9B 4-bit": 0.9902702702702703,
+   "Tev1 4B": 0.9576576576576576,
    "SemIf Qwen3.5-4B 8-bit": 0.9733333333333334,
    "SemIf Qwen3.5-4B BF16": 0.9709909909909911,
    "SemIf Qwen3.5-4B 4-bit": 0.9619819819819819,
@@ -13,6 +15,8 @@
   },
   "Direct injections (deepset)": {
    "Jev (cloud)": 0.9860119047619047,
+   "Nimble 9B 4-bit": 0.9422619047619047,
+   "Tev1 4B": 0.9392857142857143,
    "SemIf Qwen3.5-4B 8-bit": 0.981845238095238,
    "SemIf Qwen3.5-4B BF16": 0.9836309523809523,
    "SemIf Qwen3.5-4B 4-bit": 0.9663690476190475,
@@ -21,7 +25,9 @@
    "Keyword regex": 0.55
   },
   "Gandalf vs all benign": {
-   "Jev (cloud)": 0.9859492481203007,
+   "Jev (cloud)": 0.9859805764411028,
+   "Nimble 9B 4-bit": 0.9903822055137845,
+   "Tev1 4B": 0.9549185463659148,
    "SemIf Qwen3.5-4B 8-bit": 0.9740914786967418,
    "SemIf Qwen3.5-4B BF16": 0.9732769423558898,
    "SemIf Qwen3.5-4B 4-bit": 0.9857142857142857,
@@ -31,6 +37,8 @@
   },
   "Markup carriers (attributes, scripts)": {
    "Jev (cloud)": 0.9696078431372549,
+   "Nimble 9B 4-bit": 0.9205882352941176,
+   "Tev1 4B": 0.9068627450980391,
    "SemIf Qwen3.5-4B 8-bit": 0.9568627450980393,
    "SemIf Qwen3.5-4B BF16": 0.9549019607843138,
    "SemIf Qwen3.5-4B 4-bit": 0.9372549019607843,
@@ -39,7 +47,9 @@
    "Keyword regex": 0.6617647058823529
   },
   "All hidden-text carriers": {
-   "Jev (cloud)": 0.9809797482211275,
+   "Jev (cloud)": 0.9813902572523262,
+   "Nimble 9B 4-bit": 0.9266557197591679,
+   "Tev1 4B": 0.9154351395730707,
    "SemIf Qwen3.5-4B 8-bit": 0.9677066228790367,
    "SemIf Qwen3.5-4B BF16": 0.9674329501915709,
    "SemIf Qwen3.5-4B 4-bit": 0.9534756431308156,
@@ -49,6 +59,8 @@
   },
   "Image carriers": {
    "Jev (cloud)": 0.9265046296296295,
+   "Nimble 9B 4-bit": 0.9340277777777778,
+   "Tev1 4B": 0.9172453703703705,
    "SemIf Qwen3.5-4B 8-bit": 0.9299768518518517,
    "SemIf Qwen3.5-4B BF16": 0.927662037037037,
    "SemIf Qwen3.5-4B 4-bit": 0.9172453703703703,
@@ -57,7 +69,9 @@
    "Keyword regex": 0.625
   },
   "All attacks vs Nostr posts": {
-   "Jev (cloud)": 0.9866179112137541,
+   "Jev (cloud)": 0.9868231973312804,
+   "Nimble 9B 4-bit": 0.9304849884526559,
+   "Tev1 4B": 0.9422376186810366,
    "SemIf Qwen3.5-4B 8-bit": 0.9215037208108802,
    "SemIf Qwen3.5-4B BF16": 0.9205029509879394,
    "SemIf Qwen3.5-4B 4-bit": 0.8932768796510137,
@@ -66,7 +80,9 @@
    "Keyword regex": 0.6073903002309469
   },
   "Overall": {
-   "Jev (cloud)": 0.9807908917791014,
+   "Jev (cloud)": 0.9809408046675581,
+   "Nimble 9B 4-bit": 0.9268100968356224,
+   "Tev1 4B": 0.9245492484097079,
    "SemIf Qwen3.5-4B 8-bit": 0.9313074834893238,
    "SemIf Qwen3.5-4B BF16": 0.9311697256999312,
    "SemIf Qwen3.5-4B 4-bit": 0.9151493051335035,
@@ -93,6 +109,42 @@
    "blocked": 3.508771929824561,
    "flagged": 12.631578947368421,
    "passed": 83.85964912280701
+  },
+  "Nimble 9B 4-bit | all attacks": {
+   "n": 433,
+   "blocked": 77.82909930715935,
+   "flagged": 6.928406466512702,
+   "passed": 15.242494226327944
+  },
+  "Nimble 9B 4-bit | planted email": {
+   "n": 150,
+   "blocked": 62.666666666666664,
+   "flagged": 7.333333333333333,
+   "passed": 30.0
+  },
+  "Nimble 9B 4-bit | benign": {
+   "n": 285,
+   "blocked": 2.1052631578947367,
+   "flagged": 14.736842105263158,
+   "passed": 83.15789473684211
+  },
+  "Tev1 4B | all attacks": {
+   "n": 433,
+   "blocked": 69.7459584295612,
+   "flagged": 15.935334872979215,
+   "passed": 14.318706697459584
+  },
+  "Tev1 4B | planted email": {
+   "n": 150,
+   "blocked": 71.33333333333333,
+   "flagged": 12.0,
+   "passed": 16.666666666666668
+  },
+  "Tev1 4B | benign": {
+   "n": 285,
+   "blocked": 3.8596491228070176,
+   "flagged": 15.087719298245615,
+   "passed": 81.05263157894737
   },
   "SemIf Qwen3.5-4B 8-bit | all attacks": {
    "n": 433,
@@ -169,10 +221,22 @@
  },
  "table": {
   "Jev (cloud)": {
-   "auc": 0.9807908917791014,
+   "auc": 0.9809408046675581,
    "planted_email_auc": 0.9999999999999999,
    "tpr_at_dev2": 0.8891454965357968,
    "fpr_at_dev2": 0.03508771929824561
+  },
+  "Nimble 9B 4-bit": {
+   "auc": 0.9268100968356224,
+   "planted_email_auc": 0.9902702702702703,
+   "tpr_at_dev2": 0.8060046189376443,
+   "fpr_at_dev2": 0.03508771929824561
+  },
+  "Tev1 4B": {
+   "auc": 0.9245492484097079,
+   "planted_email_auc": 0.9576576576576576,
+   "tpr_at_dev2": 0.7967667436489607,
+   "fpr_at_dev2": 0.06315789473684211
   },
   "SemIf Qwen3.5-4B 8-bit": {
    "auc": 0.9313074834893238,

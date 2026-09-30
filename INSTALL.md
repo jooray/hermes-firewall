@@ -51,8 +51,8 @@ don't use OCR.
 ## 3. Venice API key (**owner**)
 
 Extraction and OCR run locally, but the extracted text of every scanned result (web pages, email,
-files, text read from images) is sent to Venice for scoring. If that is not acceptable, use the
-local service instead (see the README).
+files, text read from images) is sent to Venice for scoring. If that is not acceptable, score
+locally with Nimble instead (section 3b) and skip this section.
 
 Scoring uses Jev through Venice's Decisions API. On the benchmark corpus it cost about $0.035 per
 1,000 scans; long pages are split into several requests and cost more. Create a
@@ -63,6 +63,35 @@ the agent's own key would slow both. The owner writes the key into a file contai
 ```bash
 umask 077; cat > ~/.venice-firewall-key       # paste the key, press Enter, then Ctrl-D
 ```
+
+## 3b. Or: score locally with Nimble in Ollama (**owner**)
+
+Instead of Jev, the plugin can use Nimble, a local decision model served by Ollama 0.35 or later.
+Nothing leaves the machine and no key is needed. The price: on the benchmark it blocked 78% of
+attacks against Jev's 89%, and 63% of instructions planted in email against Jev's 92% (details
+in `bench/RESULTS.md`). It also needs the memory and a fast machine: about 11 GB for the default
+4-bit build, and on an Apple M2 Max a short message takes ~2 s and a long web page 15 s or more.
+A small server without a GPU is too slow for it.
+
+```bash
+ollama --version                  # 0.35.0 or later
+ollama pull nimble:9b-q4_K_M      # 5.6 GB download; or nimble:9b (8-bit, 9.5 GB, ~15 GB in use)
+```
+
+Then set, in the same place as the other settings (section 4):
+
+```bash
+PROMPT_FIREWALL_BACKEND=nimble
+# PROMPT_FIREWALL_MODEL=nimble:9b-q4_K_M      # the default; nimble:9b for the 8-bit build
+# PROMPT_FIREWALL_OLLAMA_URL=http://127.0.0.1:11434
+```
+
+Each model has its own thresholds, fitted on the benchmark's development split
+(`core/policy-nimble-9b-q4_K_M.json`, `core/policy-nimble-9b.json`); scores from different models
+are not on the same scale. Any other model is refused (logged as a scanner error) rather than
+run with thresholds nobody measured. With this backend the per-request timeout defaults to 60 s
+and the whole-scan deadline to 120 s. If Ollama is not running, scanning fails open like a Venice
+outage.
 
 ## 4. Settings
 

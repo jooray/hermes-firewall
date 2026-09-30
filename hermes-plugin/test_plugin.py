@@ -148,6 +148,7 @@ MARKERS = ("ignore previous instructions", "忽略以前的指令")  # what the 
 
 class FakeJev(BaseHTTPRequestHandler):
     calls = []
+    requests = []  # (path, model) per scoring request
 
     def log_message(self, *a):
         pass
@@ -157,6 +158,7 @@ class FakeJev(BaseHTTPRequestHandler):
         if self.path == "/v1/ocr":
             out = {"text": "[image metadata]: EXIF ImageDescription: PLANTED in pixels", "flags": ["image_small_text"]}
         else:
+            FakeJev.requests.append((self.path, req.get("model")))
             FakeJev.calls.append(req["state"])
             if "BROKEN" in req["state"]:
                 self.send_response(500); self.end_headers(); return
@@ -191,6 +193,59 @@ def jev_plugin(tmp_path, monkeypatch):
     yield mod
     srv.shutdown()
     del sys.modules["prompt_firewall_jev"]
+
+
+@pytest.fixture()
+def nimble_plugin(tmp_path, monkeypatch):
+    """The nimble backend: same client and extraction, pointed at a (fake) Ollama /v1/systemone."""
+    srv = HTTPServer(("127.0.0.1", 0), FakeJev)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    for k, v in {"PROMPT_FIREWALL_BACKEND": "nimble", "PROMPT_FIREWALL_OLLAMA_URL": f"http://127.0.0.1:{srv.server_port}",
+                 "FIREWALL_OCR": "none", "HERMES_HOME": str(tmp_path)}.items():
+        monkeypatch.setenv(k, v)
+    for k in ("PROMPT_FIREWALL_VENICE_KEY", "VENICE_API_KEY", "PROMPT_FIREWALL_MODEL", "PROMPT_FIREWALL_TIMEOUT",
+              "PROMPT_FIREWALL_LOCAL_FILE_BLOCK"):
+        monkeypatch.delenv(k, raising=False)
+
+    def load(**env):
+        for k, v in env.items():
+            monkeypatch.setenv(k, v)
+        spec = importlib.util.spec_from_file_location("prompt_firewall_nimble", Path(__file__).parent / "prompt-firewall" / "__init__.py",
+                                                      submodule_search_locations=[str(Path(__file__).parent / "prompt-firewall")])
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["prompt_firewall_nimble"] = mod
+        spec.loader.exec_module(mod)
+        return mod
+    FakeJev.calls.clear()
+    FakeJev.requests.clear()
+    yield load
+    srv.shutdown()
+    sys.modules.pop("prompt_firewall_nimble", None)
+
+
+def test_nimble_backend_is_local_with_its_own_policy(nimble_plugin):
+    p = nimble_plugin()
+    out = json.loads(run(p, "web_extract", {}, "Hi" + LONG + " PLANTED instruction"))
+    assert out["firewall"] == "blocked"
+    assert FakeJev.requests and all(r == ("/v1/systemone", "nimble:9b-q4_K_M") for r in FakeJev.requests)
+    pol = p._score_policy()
+    assert pol.model == "nimble:9b-q4_K_M" and pol.block != 0.38 and pol.local_block > pol.block
+    assert p.TIMEOUT == 60 and p._cfg().local_block == pol.local_block
+    assert last_log(p)["model"] == "nimble:9b-q4_K_M"
+
+
+def test_nimble_8bit_uses_its_own_thresholds(nimble_plugin):
+    p = nimble_plugin(PROMPT_FIREWALL_MODEL="nimble:9b", PROMPT_FIREWALL_LOCAL_FILE_BLOCK="0.9")
+    assert p._score_policy().model == "nimble:9b" and p._cfg().local_block == 0.9
+    run(p, "web_extract", {}, "Hi" + LONG)
+    assert FakeJev.requests[-1] == ("/v1/systemone", "nimble:9b")
+
+
+def test_nimble_unfitted_model_fails_open_not_with_wrong_thresholds(nimble_plugin):
+    p = nimble_plugin(PROMPT_FIREWALL_MODEL="tev1:4b")
+    raw = "Hi" + LONG + " PLANTED instruction"
+    assert run(p, "web_extract", {}, raw) == raw  # scanner error: fails open, like Venice being down
+    assert not FakeJev.requests and "no fitted policy" in json.dumps(last_log(p))
 
 
 def test_jev_safe_and_block(jev_plugin):

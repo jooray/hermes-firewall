@@ -2,6 +2,81 @@
 
 Current results first; the sections after "History" are earlier runs, kept for the record.
 
+## Local System One models in Ollama 0.35 (2026-09-30)
+
+Ollama 0.35 serves `/v1/systemone`, which takes Jev's request format (model, state, questions)
+and returns the same answers. `score_ollama.py` scores through the plugin's own `JevDetector`
+pointed at `http://127.0.0.1:11434/v1/systemone`: the deployed two questions, the deployed
+aggregation (max). `compare_local_sysone.py` evaluates them on the same 718 test items as the
+table below, and `mem_latency_ollama.py` measures memory and latency. Machine: MacBook Pro M2 Max,
+96 GB, Ollama 0.35.0, default model tags (all Q8_0) plus `nimble:9b-q4_K_M`.
+
+Ollama never truncates: a prompt longer than the model's shipped `num_ctx` is an HTTP 400. Nimble
+ships with 8,194 tokens, so Jev's 12,000-character chunks fit (0 errors). Tev1 ships with 2,050, so
+Tev1 was scored with 3,000-character chunks (0 errors). Each question is a separate pass over the
+text (~300 tokens of prompt overhead each).
+
+Scores are not comparable across models (0.4 from Nimble is not 0.4 from Jev), so every model gets
+its own thresholds, fitted on its own dev scores like `policy-jev.json`: block at 1% dev FPR, flag
+at 5%. AUC needs no threshold.
+
+| Detector | Test AUC | Planted email AUC | Caught @ dev 2% (test FP) | Blocked with own thresholds: attacks / planted email / benign | Block, warn |
+|---|---:|---:|---:|---|---|
+| Jev `jev-latest` (Venice) | 0.981 | 1.000 | 88.9% (3.5%) | 88.5% / 92.0% / 3.5% | 0.38, 0.20 |
+| Nimble 9B Q8_0 | 0.930 | 0.995 | 80.4% (2.5%) | 77.6% / 61.3% / 1.4% | 0.46, 0.29 |
+| Nimble 9B Q4_K_M | 0.927 | 0.990 | 80.6% (3.5%) | 77.8% / 62.7% / 2.1% | 0.53, 0.34 |
+| Tev1 4B | 0.925 | 0.958 | 79.7% (6.3%) | 69.7% / 71.3% / 3.9% | 0.50, 0.34 |
+| Tev1 0.8B | 0.834 | 0.645 | 38.1% (5.6%) | 24.0% / 10.7% / 2.5% | 0.39, 0.31 |
+| (earlier) SemIf Qwen3.5-4B 8-bit | 0.931 | 0.973 | 68.1% (4.9%) | 47.3% / 13.3% / 1.1% | |
+
+AUC by slice (test):
+
+| Slice | Jev | Nimble Q8 | Nimble Q4 | Tev1 4B | Tev1 0.8B |
+|---|---:|---:|---:|---:|---:|
+| Planted instruction in email (BIPIA) | 1.000 | 0.995 | 0.990 | 0.958 | 0.645 |
+| Direct injections (deepset) | 0.986 | 0.940 | 0.942 | 0.939 | 0.946 |
+| Gandalf vs all benign | 0.986 | 0.993 | 0.990 | 0.955 | 0.923 |
+| Markup carriers (attributes, scripts) | 0.970 | 0.947 | 0.921 | 0.907 | 0.672 |
+| Image carriers | 0.927 | 0.934 | 0.934 | 0.917 | 0.897 |
+| All attacks vs Nostr posts | 0.987 | 0.934 | 0.930 | 0.942 | 0.849 |
+| All attacks vs web pages | 0.975 | 0.942 | 0.946 | 0.770 | 0.325 |
+
+Memory and latency (`results_mem_latency_ollama.jsonl`; each model loaded alone, two questions,
+p50 over 40 test messages, one 12,000-character page). "Ollama" is Ollama's own allocation
+(`/api/ps`: weights, KV cache, buffers); RSS is the llama-server runner's resident memory while
+scoring, which also counts the memory-mapped weights and is the number to budget for.
+
+| Model | Disk | Ollama | Runner RSS | Message p50 / p95 | 12k-char page |
+|---|---:|---:|---:|---:|---:|
+| Nimble 9B Q8_0 | 9.5 GB | 10.1 GB | 14.6 GB | 1.9 s / 2.4 s | 15.6 s |
+| Nimble 9B Q4_K_M | 5.6 GB | 6.2 GB | 10.9 GB | 2.3 s / 2.8 s | 17.6 s |
+| Tev1 4B | 4.5 GB | 4.7 GB | 10.8 GB | 1.0 s / 1.3 s | 11.9 s |
+| Tev1 0.8B | 0.8 GB | 0.9 GB | 3.4 GB | 0.19 s / 0.25 s | 2.1 s |
+| Jev (Venice) | | | | ~0.45 s | |
+
+Findings:
+
+- **Not a drop-in replacement for Jev.** The best local model, Nimble, catches 80% at the dev-2%
+  threshold against Jev's 89%. The gap is planted email: Nimble ranks almost every attacked email
+  above its clean copy (AUC 0.995), but a quarter of the attacked dev emails score below 0.08 (Jev's
+  lowest: 0.27), under some junk Nostr posts and benign carriers. With its own thresholds Nimble
+  blocks 92 of 150 planted-email attacks (Jev: 138).
+- **Nimble is the best local detector so far.** Same AUC as SemIf 8-bit (0.930 vs 0.931) but more
+  caught at a similar false-positive rate (80% vs 68%), and 0.995 vs 0.973 on planted email.
+- **Q4_K_M costs nothing measurable** and saves ~4 GB.
+- **Tev1 4B** ranks almost as well overall but is weak against web pages (0.770; only 8 benign
+  pages in the slice). With a 2,050-token context a long page becomes up to 5 chunks of 3,000
+  characters, and the max over chunks rises with the count: its highest-scoring page (0.94) had 4
+  chunks. Its dev threshold also did not carry over (6.3% test FP against a 2% dev target).
+- **Tev1 0.8B** is small and fast but misses most planted instructions (0.645).
+- **Speed:** far from the "under 100 ms" on Ollama's model page (M5 Max). On an M2 Max a short
+  message takes ~2 s with Nimble. The plugin's default per-request timeout (5 s,
+  `PROMPT_FIREWALL_TIMEOUT`) is shorter than a 12,000-character chunk takes.
+- **Questions:** the two deployed questions were chosen on Jev's dev scores. Other wording might
+  suit Nimble better; not searched.
+- The plugin can point at Ollama (`PROMPT_FIREWALL_JEV_URL`) but still sends model `jev-latest` and
+  uses Jev's thresholds, so using a local model needs a model setting and a per-model policy file.
+
 ## Current results (2026-09-26)
 
 What changed since the v4 run below:

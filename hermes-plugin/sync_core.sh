@@ -8,5 +8,6 @@ DST=prompt-firewall/core
 mkdir -p "$DST"
 for f in extract.py policy.py questions.py jev_detector.py; do cp "$SRC/$f" "$DST/$f"; done
 cp "$SRC/policy-jev.json" "$DST/policy-jev.json" 2>/dev/null || echo "note: no policy-jev.json yet"
+for f in "$SRC"/policy-nimble-*.json; do [ -e "$f" ] && cp "$f" "$DST/"; done  # nimble backend, one per model
 printf '"""Vendored from firewall/src/hermes_firewall by sync_core.sh. Do not edit here."""\n' > "$DST/__init__.py"
 echo "synced: $(ls $DST | tr '\n' ' ')"

@@ -25,7 +25,9 @@ I write about building things on [my blog](https://juraj.bednar.io/en/blog-en/).
 **Install:** follow [`INSTALL.md`](INSTALL.md). It is written so your Hermes agent can do most of it
 for you. In short: `hermes plugins install jooray/hermes-firewall/hermes-plugin/prompt-firewall --enable`,
 a Venice API key in a file, optionally Tesseract for images, then a restart. It needs no second
-machine and installs nothing into Hermes' Python environment.
+machine and installs nothing into Hermes' Python environment. To keep everything on your machine,
+set `PROMPT_FIREWALL_BACKEND=nimble` to score with Nimble in Ollama 0.35+ instead of Venice (no key;
+~11 GB of memory; less accurate than Jev, see below).
 
 ## How it works
 
@@ -81,12 +83,16 @@ iteratively, so treat these numbers as exploratory.
 | Detector | Test AUC | Planted email instructions | Caught at dev 2% threshold (test FP) |
 |---|---:|---:|---:|
 | **Jev** (Venice, ~0.5 s, ~$0.035 per 1,000 scans on this corpus) | **0.981** | **1.000** | **88.9%** (3.5%) |
+| Nimble 9B, 4-bit (local, Ollama 0.35, ~11 GB, ~2 s) | 0.927 | 0.990 | 80.6% (3.5%) |
+| Tev1 4B (local, Ollama 0.35, ~11 GB, ~1 s) | 0.925 | 0.958 | 79.7% (6.3%) |
 | SemIf with Qwen3.5-4B, 8-bit (local, 6 GB, ~1.3 s) | 0.931 | 0.973 | 68.1% (4.9%) |
 | ProtectAI deberta-v3 prompt-injection v2 | 0.813 | 0.433 | 49.4% (4.6%) |
 | Laya 421M (local, 1 GB) | 0.790 | 0.543 | 39.5% (4.9%) |
 | Keyword regex | 0.602 | – | 21.5% (1.1%) |
 
 With its shipped thresholds, Jev blocks 88.5% of the attacks and 3.5% of the benign items.
+Nimble 4-bit, the local backend (`PROMPT_FIREWALL_BACKEND=nimble`), blocks 77.8% and 2.1% with its
+own thresholds, but only 62.7% of the instructions planted in email (Jev: 92.0%).
 
 Small classifiers catch jailbreak phrasing but are at chance on an ordinary-looking instruction
 planted in an ordinary email; SemIf and Jev separated those reliably. These numbers measure the
@@ -142,6 +148,10 @@ VENICE_API_KEY=... uv run python score_jev.py          # through the plugin's ow
 # SemIf: clone callebtc/decision-tools next to this repo and set up decision-tools/Semif, then
 #   ../decision-tools/Semif/.venv/bin/python score_semif.py   (SEMIF_BITS=8 SEMIF_TAG=semif_q8 for 8-bit)
 uv run python compare_jev_questions.py --write-policy    # policy-jev.json; compare_variants.py --write-policy semif_q8 for SemIf
+# Local System One models in Ollama 0.35+ (ollama pull nimble:9b-q4_K_M tev1:4b ...):
+uv run python score_ollama.py nimble:9b-q4_K_M           # --chunk-chars 3000 for Tev1 (2,050-token context)
+uv run python compare_local_sysone.py && uv run python mem_latency_ollama.py nimble:9b-q4_K_M
+uv run python fit_local_policy.py nimble:9b-q4_K_M nimble:9b   # policy-nimble-*.json, then sync_core.sh
 uv run python blog_charts.py                             # the README/blog numbers and charts
 ```
 
