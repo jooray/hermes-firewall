@@ -231,9 +231,8 @@ SKIP = {"memory", "todo_list", "todo", "clarify", "write_file", "patch", "skill_
 SKIP |= set(_env_list("PROMPT_FIREWALL_SKIP_TOOLS"))
 # Results the agent's own machinery produced: Hermes' session, skill and tool indexes, and the
 # owner's memory. Instruction-like by nature — they are written for the agent — and not
-# attacker-controlled; blocking one can break a real workflow (a steering message carrying a
-# 2FA code, a skill the agent needs mid-task). Scanned and logged, never blocked.
-# PROMPT_FIREWALL_WARN_TOOLS adds tool names.
+# attacker-controlled; blocking one can break a real workflow mid-task. Scanned and logged,
+# never blocked. PROMPT_FIREWALL_WARN_TOOLS adds tool names.
 _FIRST_PARTY = {"session_search", "skill_view", "tool_search", "tool_describe",
                 "honcho_search", "honcho_profile", "honcho_ask"}
 # Commands whose output only reports on the agent's own work. Every segment of a compound command
