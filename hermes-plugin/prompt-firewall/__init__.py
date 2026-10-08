@@ -26,8 +26,11 @@ settings in plugin.yaml's config_schema are resolved per call, so each Hermes pr
 log, quarantine and settings. Needs only httpx and Pillow, which Hermes already ships.
 
 Coverage rule: every tool is scanned unless it is on the SKIP list (tools whose results carry
-no outside content). A scan that could not look at part of the result (an image it could not
-read, a remote image, a failed OCR, a chunk that could not be scored) is never logged as safe.
+no outside content). Results the agent's own machinery produces (session_search, skill_view,
+tool_search, tool_describe, honcho_*) are scanned but only logged: they are instruction-like
+by nature and are not attacker-controlled. A scan that could not look at part of the result
+(an image it could not read, a remote image, a failed OCR, a chunk that could not be scored)
+is never logged as safe.
 
 Outcome rule: a result is either blocked (replaced by a JSON stub) or passed unchanged. Nothing
 is ever added to a result: a text banner would corrupt JSON results that Hermes itself parses
@@ -55,7 +58,7 @@ import httpx
 
 log = logging.getLogger("prompt_firewall")
 
-__version__ = "0.5.0"  # keep in step with plugin.yaml
+__version__ = "0.6.0"  # keep in step with plugin.yaml
 
 # Process-level settings: from the environment, read once. The per-profile settings further down
 # (_cfg) default to these and can be overridden per profile in config.yaml.
@@ -135,7 +138,7 @@ def _as_list(v: Any) -> list:
 
 class _Cfg(SimpleNamespace):
     """Settings for one call: warn_only, on_error, on_incomplete, local_block, min_words,
-    max_images, skip, external_paths, trusted_commands."""
+    max_images, skip, warn_tools, external_paths, trusted_commands."""
 
 
 def _cfg() -> _Cfg:
@@ -148,6 +151,7 @@ def _cfg() -> _Cfg:
         min_words=int(_setting("min_words", MIN_WORDS)),
         max_images=int(_setting("max_images", MAX_IMAGES)),
         skip=SKIP | set(_as_list(_setting("skip_tools", ""))),
+        warn_tools=set(_as_list(_setting("warn_tools", _env_list("PROMPT_FIREWALL_WARN_TOOLS")))),
         external_paths=_as_list(_setting("external_paths", _env_list("PROMPT_FIREWALL_EXTERNAL_PATHS"))),
         trusted_commands=set(_as_list(_setting("trusted_commands", _env_list("PROMPT_FIREWALL_TRUSTED_COMMANDS")))),
     )
@@ -224,6 +228,13 @@ SKIP = {"memory", "todo_list", "todo", "clarify", "write_file", "patch", "skill_
         "browser_vault_enter_code", "browser_vault_fill", "browser_vault_list", "browser_vault_save_login",
         "browser_vault_unlock"}
 SKIP |= set(_env_list("PROMPT_FIREWALL_SKIP_TOOLS"))
+# Results the agent's own machinery produced: Hermes' session, skill and tool indexes, and the
+# owner's memory. Instruction-like by nature — they are written for the agent — and not
+# attacker-controlled; blocking one can break a real workflow (a steering message carrying a
+# 2FA code, a skill the agent needs mid-task). Scanned and logged, never blocked.
+# PROMPT_FIREWALL_WARN_TOOLS adds tool names.
+_FIRST_PARTY = {"session_search", "skill_view", "tool_search", "tool_describe",
+                "honcho_search", "honcho_profile", "honcho_ask"}
 # Commands whose output only reports on the agent's own work. Every segment of a compound command
 # must be one of these; command substitution never is. ls is not here: file names can come from
 # outside. PROMPT_FIREWALL_TRUSTED_COMMANDS adds command names.
@@ -305,6 +316,8 @@ def _remember_downloads(cmd: str, workdir: str) -> None:
 def _policy(tool: str, args: Dict[str, Any], cfg: _Cfg) -> Optional[str]:
     if tool in cfg.skip:
         return None
+    if tool in _FIRST_PARTY or tool in cfg.warn_tools:
+        return "warn"
     if tool.startswith("mcp_") or tool in _EXTERNAL or (tool.startswith("browser_") and "vault" not in tool):
         return "external"
     if tool == "terminal":

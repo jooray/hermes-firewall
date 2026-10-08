@@ -125,6 +125,18 @@ Output of a short list of commands that only report on the agent's own work (`gi
 `git commit`, `mkdir`, `echo`, …) is never blocked, only logged. `PROMPT_FIREWALL_TRUSTED_COMMANDS`
 adds command names to that list.
 
+Two more things are never blocked, only logged: the harness' own instruction-like text (Hermes'
+approval denials such as "BLOCKED: Command timed out … Do NOT retry", its terminal exit-code
+hint, the `read_file` "File unchanged since last read" notice, delegate_task acknowledgements,
+BrowserOS' page notes and session tips, the protective `<untrusted_tool_result>` /
+`[UNTRUSTED_PAGE_CONTENT]` envelopes, and the plugin's own block notice, which a retry can print
+back into a later result) is removed before scoring; and the results of the agent's own index
+tools (`session_search`, `skill_view`, `tool_search`, `tool_describe`, `honcho_*`) are scanned
+but never blocked. `PROMPT_FIREWALL_WARN_TOOLS` adds tool names to that warn-only list.
+Removal is template-exact: text that merely looks like one of those messages is left in place
+and scored, so nothing can be smuggled past the scanner by dressing it up as a first-party
+message.
+
 Scanning failures (no Venice credit, Venice down, a bug) **fail open** by default: content passes
 through unscanned so the agent keeps working, and the log records it. Content already found to be
 an injection is blocked even if a later part of the same result fails to scan. For strict setups,
@@ -152,9 +164,11 @@ plugins:
 | Source | Examples | On injection | When scanning fails |
 |---|---|---|---|
 | External content | `web_*`, `x_search`, `browser_*`, `mcp_*`, `vision_analyze`, `computer_use`, shell commands and code that fetch (`curl`, `wget`, `gh`, `himalaya`, URLs, Python `requests`/`imaplib`), their background jobs, files they saved, Hermes' spill files, `PROMPT_FIREWALL_EXTERNAL_PATHS` | blocked at 0.38 | passed, or withheld with `ON_ERROR=closed` |
-| Other tools | `delegate_task`, `session_search`, any tool not listed in the plugin | blocked at 0.38 | passed, or withheld with `ON_ERROR=closed` |
+| Other tools | `delegate_task`, any tool not listed in the plugin | blocked at 0.38 | passed, or withheld with `ON_ERROR=closed` |
+| First-party tools | `session_search`, `skill_view`, `tool_search`, `tool_describe`, `honcho_*` (and `PROMPT_FIREWALL_WARN_TOOLS`) | logged only | passed |
 | Local content | `read_file`, `search_files`, other `terminal`/`execute_code`/`process_manage` output | blocked at 0.6 | passed, or withheld with `ON_ERROR=closed` |
 | Trusted commands | `git status`, `git commit`, `mkdir`, `echo`, … (every part of the command line) | logged only | passed |
+| Harness text | Hermes' approval denials, terminal hint, read-dedup notice, delegate acks; BrowserOS notes and tips; `<untrusted_tool_result>` / `[UNTRUSTED_PAGE_CONTENT]` envelopes; the plugin's own block notice | removed before scoring | passed |
 | Cron script output | the body of the `## Script Output` block of a scheduled job's prompt | blocked at 0.38 | passed, or withheld with `ON_ERROR=closed` |
 | Not scanned | the agent's own state and actions: `memory`, `todo_list`, `write_file`, `patch`, `send_message`, generators, UI tools; results under 3 words | | |
 

@@ -47,15 +47,23 @@ set `PROMPT_FIREWALL_BACKEND=nimble` to score with Nimble in Ollama 0.35+ instea
    Images are OCR'd (Tesseract, or Apple Vision on macOS if `ocrmac` is installed), including small
    print and near-white text. Their metadata is read too: EXIF, XMP, comments, and bytes after the
    JPEG end marker.
+
+   Text the harness itself wrote into a result — Hermes' approval denials and tool notices,
+   BrowserOS' page notes and session tips, the protective `<untrusted_tool_result>` and
+   `[UNTRUSTED_PAGE_CONTENT]` envelopes, and the plugin's own block notice, which a retry can
+   print back into a later result — is removed before scoring, template-exact. Text that merely
+   looks like it is left in and scored.
 2. **Score** with [Jev](https://venice.ai/lp/jev), a decision model on Venice's Decisions API. It
    answers two questions about the text and returns calibrated probabilities, not generated text.
    Long content is chunked, never truncated.
 3. **Decide** with a threshold fitted on a labelled dev set: block, or pass unchanged. The plugin
    never adds text to a result, because a warning prefix would break the JSON Hermes parses from
-   tool results. A second, lower threshold only marks a scan as `flagged` in the log, as do content
-   hidden with certain techniques (invisible Unicode, base64, a sentence in an HTML `id`, tiny or
-   faint image text) and results the scanner could not fully read (no OCR, a failed OCR run, an
-   undecodable or remote image).
+   tool results. Results of the agent's own index tools (`session_search`, `skill_view`,
+   `tool_search`, `tool_describe`, `honcho_*`) are scanned and logged but never blocked: they are
+   written for the agent by design. A second, lower threshold only marks a scan as `flagged` in
+   the log, as do content hidden with certain techniques (invisible Unicode, base64, a sentence
+   in an HTML `id`, tiny or faint image text) and results the scanner could not fully read (no
+   OCR, a failed OCR run, an undecodable or remote image).
    Local content (files and the output of local shell commands) uses a higher block threshold than
    content from outside (web, MCP, email, fetch commands and the files they save), because the
    agent's own notes are what score just above the lower one ([`INSTALL.md`](INSTALL.md)).

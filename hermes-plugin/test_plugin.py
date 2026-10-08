@@ -89,6 +89,14 @@ def test_trusted_command_is_warn_only_other_shell_output_is_local(plugin):
     assert last_log(plugin)["mode"] == "local"
 
 
+def test_first_party_tools_are_warn_only(plugin):
+    VERDICTS["PLANTED"] = {"verdict": "injection", "score": 0.97, "reasons": []}
+    for tool in ("session_search", "skill_view", "tool_search", "tool_describe", "honcho_search", "honcho_profile"):
+        raw = json.dumps({"content": "PLANTED" + LONG})
+        assert run(plugin, tool, {}, raw) == raw, tool  # scanned but never blocked
+        assert last_log(plugin)["action"] == "flagged" and last_log(plugin)["verdict"] == "injection", tool
+
+
 def test_fail_open_by_default_then_breaker(plugin, monkeypatch):
     monkeypatch.setattr(plugin, "URL", "http://127.0.0.1:1")
     monkeypatch.setattr(plugin, "_down_until", 0.0)

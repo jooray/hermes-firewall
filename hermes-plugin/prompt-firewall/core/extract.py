@@ -16,6 +16,8 @@ import unicodedata
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
+from .trusted import strip_first_party
+
 TAG_LO, TAG_HI = 0xE0000, 0xE007F
 ZERO_WIDTH = {"\u200b", "\u200c", "\u200d", "\u2060", "\ufeff", "\u180e"}  # written as escapes: never put invisible characters in source
 BIDI = {chr(c) for c in range(0x202A, 0x202F)} | {chr(c) for c in range(0x2066, 0x206A)}
@@ -468,6 +470,9 @@ def extract(content: str | bytes, kind: str = "auto") -> Extracted:
             return extract_image(content)
         content = content.decode("utf-8", "replace")
     out = Extracted(text="")
+    # The harness' own instruction-like text (approval denials, wrappers, the gate's own block
+    # notice) is not attacker content; remove it before anything else looks at the text.
+    content = strip_first_party(content)
     text = reveal_unicode(content, out)
     if kind == "html" or (kind == "auto" and looks_like_html(text)):
         text = html_to_text(text, out)

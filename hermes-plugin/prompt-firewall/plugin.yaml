@@ -1,5 +1,5 @@
 name: prompt-firewall
-version: "0.5.0"
+version: "0.6.0"
 description: "Scan untrusted tool results (web, MCP, email, files, images) for prompt injection before they enter the model's context. Local extraction and OCR, scoring by Jev (Venice Decisions API) or a local Nimble model in Ollama."
 author: "hermes-firewall contributors"
 kind: standalone
@@ -30,6 +30,9 @@ config_schema:
   skip_tools:
     type: list
     description: "extra tools never scanned"
+  warn_tools:
+    type: list
+    description: "extra tools that are scanned but never blocked (first-party tools are already warn-only)"
   external_paths:
     type: list
     description: "directories whose files count as outside content when read (mail stores, downloads)"
@@ -51,6 +54,7 @@ optional_env:
   - PROMPT_FIREWALL_MIN_WORDS        # results with fewer words are not scanned (default 3)
   - PROMPT_FIREWALL_MAX_IMAGES       # images scanned per result (default 8); more are logged as not fully scanned
   - PROMPT_FIREWALL_SKIP_TOOLS       # comma-separated extra tools never scanned (every other tool is)
+  - PROMPT_FIREWALL_WARN_TOOLS       # comma-separated extra tools scanned but never blocked (on top of session_search, skill_view, tool_search, tool_describe, honcho_*)
   - PROMPT_FIREWALL_LOCAL_FILE_BLOCK # block level for local files and local shell output (default: jev 0.6, nimble the policy's local_block; external content uses the policy's block level)
   - PROMPT_FIREWALL_EXTERNAL_PATHS   # comma-separated directories whose files count as outside content
   - PROMPT_FIREWALL_TRUSTED_COMMANDS # comma-separated extra shell commands whose output is only logged
