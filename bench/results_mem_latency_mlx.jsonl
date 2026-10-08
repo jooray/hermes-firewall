@@ -1,0 +1,4 @@
+{"model": "Decision-2.0-Lux-9B-MLX-4bit", "chunk_chars": 12000, "mlx_peak_gb": 5.55, "server_footprint_gb": 12.0, "server_rss_gb": 5.19, "msg_p50_ms": 1450, "msg_p95_ms": 1847, "page_12k_ms": 13660}
+{"model": "d1-3B", "chunk_chars": 12000, "mps_allocated_gb": 7.38, "server_footprint_gb": 7.51, "server_rss_gb": 0.82, "msg_p50_ms": 328, "msg_p95_ms": 447, "page_12k_ms": 3976}
+{"model": "d1-omni-600M", "chunk_chars": 12000, "mps_allocated_gb": 2.5, "server_footprint_gb": 2.79, "server_rss_gb": 0.97, "msg_p50_ms": 60, "msg_p95_ms": 210, "page_12k_ms": 717}
+{"model": "RSI-Jev v6.1-VL 4B", "chunk_chars": 12000, "server_footprint_gb": 21.0, "server_rss_gb": 0.93, "msg_p50_ms": 1737, "msg_p95_ms": 2292, "page_12k_ms": 14005, "note": "fp32 on MPS; measured under heavy host load"}

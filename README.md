@@ -27,7 +27,9 @@ for you. In short: `hermes plugins install jooray/hermes-firewall/hermes-plugin/
 a Venice API key in a file, optionally Tesseract for images, then a restart. It needs no second
 machine and installs nothing into Hermes' Python environment. To keep everything on your machine,
 set `PROMPT_FIREWALL_BACKEND=nimble` to score with Nimble in Ollama 0.35+ instead of Venice (no key;
-~11 GB of memory; less accurate than Jev, see below).
+~11 GB of memory; less accurate than Jev, see below). [RSI-Jev](https://github.com/Shanghua-Gao/RSI-Jev)
+v6.1-VL 4B runs behind the same backend (`PROMPT_FIREWALL_BACKEND=local`); it ranks above Nimble
+overall but blocks fewer planted-email attacks — `INSTALL.md` §3b, numbers below.
 
 ## How it works
 
@@ -91,6 +93,7 @@ iteratively, so treat these numbers as exploratory.
 | Detector | Test AUC | Planted email instructions | Caught at dev 2% threshold (test FP) |
 |---|---:|---:|---:|
 | **Jev** (Venice, ~0.5 s, ~$0.035 per 1,000 scans on this corpus) | **0.981** | **1.000** | **88.9%** (3.5%) |
+| RSI-Jev v6.1-VL 4B (local, `local` backend, ~21 GB, ~1.3 s) | 0.940 | 0.961 | 79.9% (7.0%) |
 | Nimble 9B, 4-bit (local, Ollama 0.35, ~11 GB, ~2 s) | 0.927 | 0.990 | 80.6% (3.5%) |
 | Tev1 4B (local, Ollama 0.35, ~11 GB, ~1 s) | 0.925 | 0.958 | 79.7% (6.3%) |
 | SemIf with Qwen3.5-4B, 8-bit (local, 6 GB, ~1.3 s) | 0.931 | 0.973 | 68.1% (4.9%) |
@@ -100,7 +103,11 @@ iteratively, so treat these numbers as exploratory.
 
 With its shipped thresholds, Jev blocks 88.5% of the attacks and 3.5% of the benign items.
 Nimble 4-bit, the local backend (`PROMPT_FIREWALL_BACKEND=nimble`), blocks 77.8% and 2.1% with its
-own thresholds, but only 62.7% of the instructions planted in email (Jev: 92.0%).
+own thresholds, but only 62.7% of the instructions planted in email (Jev: 92.0%). RSI-Jev
+v6.1-VL 4B through the same backend (`PROMPT_FIREWALL_BACKEND=local`) ranks above Nimble overall
+but blocks 72.3% and 3.5%, and 50.0% of the planted-email attacks; Nimble stays the local pick
+for email. RSI-Jev is the first model here whose native image input beats OCR (0.998 on text
+drawn in pixels against 0.970 through Tesseract).
 
 Small classifiers catch jailbreak phrasing but are at chance on an ordinary-looking instruction
 planted in an ordinary email; SemIf and Jev separated those reliably. These numbers measure the

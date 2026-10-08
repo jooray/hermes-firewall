@@ -2,6 +2,179 @@
 
 Current results first; the sections after "History" are earlier runs, kept for the record.
 
+## RSI-Jev v6.1-VL 4B, local on Apple Silicon (2026-10-08)
+
+[RSI-Jev v6.1-VL 4B](https://huggingface.co/shgao/rsi-jev-v6.1-vl-4b) (4.69B; Qwen3.5-4B-Base
+with decision heads at layers 16/20/32 and a vision tower; the latest of eight releases of the
+[RSI-Jev](https://github.com/Shanghua-Gao/RSI-Jev) self-improving loop) speaks Jev's
+`/v1/systemone`, so it was scored exactly like the Ollama models: `score_ollama.py --tag
+rsi-jev-v6.1-vl-4b --url http://127.0.0.1:8110/v1/systemone jev-latest`, through the plugin's own
+client, the deployed two questions and 12,000-character chunks, 0 errors on all 1,947 items.
+Served by `rsi-jev serve v6.1-vl-4b --device mps` in a throwaway venv (torch 2.14.1,
+transformers 5.17.0, fp32 — the non-CUDA default; the package pins transformers < 5.18) on the
+same M2 Max 96 GB as the other local models. The same backend serves it in production:
+`PROMPT_FIREWALL_BACKEND=local`, `PROMPT_FIREWALL_MODEL=rsi-jev-v6.1-vl-4b` (INSTALL.md §3b),
+thresholds fitted on the dev split (`core/policy-rsi-jev-v6.1-vl-4b.json`: block 0.45, warn 0.24,
+local_block 0.78).
+
+| Detector | Test AUC | Planted email AUC | Caught @ dev 2% (test FP) | Blocked with own thresholds: attacks / planted email / benign | Block, warn |
+|---|---:|---:|---:|---|---|
+| Jev `jev-latest` (Venice) | 0.981 | 1.000 | 88.9% (3.5%) | 88.5% / 92.0% / 3.5% | 0.38, 0.20 |
+| **RSI-Jev v6.1-VL 4B** | **0.940** | 0.961 | 79.9% (7.0%) | 72.3% / 50.0% / 3.5% | 0.45, 0.24 |
+| Nimble 9B Q4_K_M (Ollama) | 0.927 | 0.990 | 80.6% (3.5%) | 77.8% / 62.7% / 2.1% | 0.53, 0.34 |
+| Tev1 4B (Ollama) | 0.925 | 0.958 | 79.7% (6.3%) | 69.7% / 71.3% / 3.9% | 0.50, 0.34 |
+| Lux 9B MLX 4-bit | 0.914 | 0.939 | 63.3% (4.2%) | 53.3% / 22.7% / 2.5% | 0.72, 0.41 |
+| d1-3B | 0.876 | 0.975 | 61.2% (2.1%) | 56.4% / 19.3% / 1.1% | 0.66, 0.30 |
+
+AUC by slice: planted email 0.961, deepset 0.985, Gandalf 0.988, markup carriers 0.934, image
+carriers 0.966, attacks vs Nostr 0.936, attacks vs web pages 0.870.
+
+### Pictures instead of OCR (`score_rsijev_images.py`, `compare_d1_images.py`)
+
+RSI-Jev reads images, so the image carriers were also scored with the picture itself: the state
+is the extracted text minus the OCR lines (metadata stays) and the image goes in as a base64 data
+URL in RSI-Jev's `images` field. Test image items (102: 48 attacks), block threshold from its own
+text dev scores:
+
+| Model, input | AUC all | AUC text in pixels | AUC text in metadata | Attacks blocked | Benign blocked |
+|---|---:|---:|---:|---:|---:|
+| RSI-Jev, OCR text (plugin path) | 0.964 | 0.970 | 0.965 | 40 / 48 | 0 |
+| RSI-Jev, picture + metadata | **0.974** | **0.998** | 0.953 | 40 / 48 | 3 |
+| d1-3B, OCR text | 0.988 | 1.000 | 0.979 | 40 / 48 | 1 |
+| d1-3B, picture + metadata | 0.946 | 0.984 | 0.919 | 28 / 48 | 1 |
+
+Findings:
+
+- **RSI-Jev is the first model here whose native image input beats OCR**: 0.974 overall against
+  0.964, and on text drawn in the pixels 0.998 against 0.970, blocking 17 of 18 pixel attacks
+  (d1-3B with the picture: 10 of 18; with OCR: 14 of 18). Its vision tower reads the synthetic
+  images — near-white and 11 px text included — better than Tesseract does. Metadata attacks are
+  read slightly better as text (0.965 vs 0.953), where the picture adds noise; a deployment could
+  use both.
+- **It is the strongest local model by overall ranking** (0.940 test AUC, above Nimble's 0.927
+  and d1-3B's 0.876) and ties Nimble at the dev-2% threshold (79.9% vs 80.6%) but with more test
+  false positives (7.0% vs 3.5%). The gap to Nimble is planted email: 0.961 AUC against 0.990,
+  and with its own thresholds it blocks 75 of 150 planted-email attacks (Nimble 94, Jev 138). Its
+  scores are compressed — the refit block threshold is 0.45 — which is what costs it there.
+- **Fast enough to sit in the loop**: 1.34 s p50 / 2.43 s p95 per message over the whole test
+  split and ~4.3 s per image on an M2 Max, between d1-3B and Nimble in speed at 4.69B parameters.
+- Caveats: fp32 on MPS is not the CUDA path RSI-Jev benchmarks; the two questions were picked on
+  Jev's dev scores; the default serving config (adaptive exit, tau 0.95) was used as shipped.
+
+Memory and latency (`mem_latency_mlx.py`, fresh server, same 40 messages and 12k-character page;
+measured while the host was under heavy unrelated load, so treat the latencies as an upper bound):
+
+| Model | Disk | Server footprint | Server RSS | Message p50 / p95 | 12k-char page |
+|---|---:|---:|---:|---:|---:|
+| RSI-Jev v6.1-VL 4B (fp32) | 9.7 GB | 21.0 GB | 0.93 GB | 1.74 s / 2.29 s | 14.0 s |
+
+## Liquid AI open d1: d1-3B and d1-omni-600M (2026-10-08)
+
+[d1-3B](https://huggingface.co/LiquidAI/d1-3B) (3.1B, on LFM2.5-VL-3B, text + images, 32k context)
+and [d1-omni-600M](https://huggingface.co/LiquidAI/d1-omni-600M) (587M, on LFM2.5-Encoder-350M,
+text + images or audio, 16k context) ship as transformers `trust_remote_code` models with a
+`system_one(state, questions, images=None)` call that takes Jev's question schema. A ~50-line
+FastAPI shim (not in the repo) served each on `/v1/systemone` on the M2 Max's GPU (MPS), d1-3B in
+bfloat16 and d1-omni-600M in float16 as their model cards recommend, adding each answer's `type`
+the way Jev returns it. Scored with `score_ollama.py --tag d1-3b` / `--tag d1-omni-600m --url ...`
+(12,000-character chunks), 0 errors. Python 3.12, torch 2.14.1, transformers 5.19.0, in a
+throwaway venv. Not wired into the plugin.
+
+| Detector | Test AUC | Planted email AUC | Caught @ dev 2% (test FP) | Blocked with own thresholds: attacks / planted email / benign | Block, warn |
+|---|---:|---:|---:|---|---|
+| Jev `jev-latest` (Venice) | 0.981 | 1.000 | 88.9% (3.5%) | 88.5% / 92.0% / 3.5% | 0.38, 0.20 |
+| Nimble 9B Q4_K_M (Ollama) | 0.927 | 0.990 | 80.6% (3.5%) | 77.8% / 62.7% / 2.1% | 0.53, 0.34 |
+| d1-3B | 0.876 | 0.975 | 61.2% (2.1%) | 56.4% / 19.3% / 1.1% | 0.66, 0.30 |
+| d1-omni-600M | 0.710 | 0.650 | 18.7% (1.8%) | 9.2% / 7.3% / 0.4% | 0.90, 0.40 |
+
+AUC by slice, d1-3B / d1-omni-600M: planted email 0.975 / 0.650, deepset 0.979 / 0.644, Gandalf
+0.995 / 0.796, markup carriers 0.906 / 0.792, image carriers 0.988 / 0.718, attacks vs Nostr
+0.868 / 0.700, attacks vs web pages 0.851 / 0.400.
+
+Memory and latency (`mem_latency_mlx.py`, fresh server, same 40 messages and 12k-character page):
+
+| Model | Disk | MPS allocation | Message p50 / p95 | 12k-char page | One image as pixels |
+|---|---:|---:|---:|---:|---:|
+| d1-3B (bf16) | 5.8 GB | 7.4 GB | 0.33 s / 0.45 s | 4.0 s | 3.8 s |
+| d1-omni-600M (fp16) | 2.2 GB | 2.5 GB | 0.06 s / 0.21 s | 0.7 s | 0.7 s |
+
+### Pictures instead of OCR (`score_d1_images.py`, `compare_d1_images.py`)
+
+Both models read images, so the image carriers were also scored with the picture itself: the
+state is the extracted text minus the OCR lines (EXIF, XMP, JPEG comment, trailing bytes and PNG
+text stay), and the image goes in as pixels. Test image items (102: 48 attacks), block threshold
+from each model's text dev scores:
+
+| Model, input | AUC all | AUC text in pixels | AUC text in metadata | Attacks blocked | Benign blocked |
+|---|---:|---:|---:|---:|---:|
+| d1-3B, OCR text (plugin path) | 0.988 | 1.000 | 0.979 | 40 / 48 | 1 |
+| d1-3B, picture + metadata | 0.946 | 0.984 | 0.919 | 28 / 48 | 1 |
+| d1-omni-600M, OCR text | 0.774 | 0.706 | 0.857 | 3 / 48 | 0 |
+| d1-omni-600M, picture + metadata | 0.615 | 0.551 | 0.716 | 4 / 48 | 6 |
+
+Findings:
+
+- **d1-3B ranks well within a source but not across sources.** Planted email 0.975, deepset
+  0.979, Gandalf 0.995, image carriers 0.988 (best of all detectors), yet 0.876 overall. Its scores
+  are on different scales per kind of content: attacked emails have a median of 0.14 (clean emails
+  0.016), benign Nostr posts 0.11 with a tail to 0.91 (insults, Aum Shinrikyo spam, "Embrace
+  curiosity"). One threshold over everything blocks 29 of 150 planted-email attacks.
+  Per-source thresholds would help; not tried, the plugin has one threshold per backend.
+- **d1-3B is the fastest useful local model**: 0.33 s per message and 4 s per 12k-character page
+  on an M2 Max, against ~2 s and 15-18 s for Nimble in Ollama; unquantized bf16 needs 7.4 GB.
+- **d1-omni-600M is not usable as an injection gate** (0.710 overall, 0.400 attacks vs web pages).
+- **Pictures do not beat OCR.** With the picture, d1-3B blocks 28 of 48 image attacks against 40
+  from OCR text, and text drawn in the pixels drops from 1.000 to 0.984. Even metadata attacks get
+  worse when the picture sits next to the same text (0.979 -> 0.919). A picture also takes 3.8 s
+  against about 1 s for OCR (0.7 s median) plus a text score. The OCR step stays.
+- Caveats: same two questions as Jev, picked on Jev's dev scores; d1-omni-600M cuts the text to 896
+  tokens when an image is present (it was trained that way); MPS bf16 is not the CUDA path Liquid
+  benchmarks.
+
+## Decision-2.0-Lux-9B, MLX 4-bit (2026-10-04)
+
+[moritalous/Decision-2.0-Lux-9B-MLX-4bit](https://huggingface.co/moritalous/Decision-2.0-Lux-9B-MLX-4bit)
+is an unofficial 4-bit MLX conversion of vLLM Semantic Router's
+[Decision-2.0-Lux-9B](https://huggingface.co/vllm-sr/Decision-2.0-Lux-9B) (Qwen3.5-9B backbone plus a
+candidate head; 16,384-token context). Its `mlx_decision.py --port N` serves the same
+`/v1/systemone` request format, so it was scored exactly like the Ollama models:
+`score_ollama.py --tag mlx_lux-9b-4bit --url http://127.0.0.1:N/v1/systemone lux` (the server
+ignores the model name). Default server settings (shared-prefix cache on), 12,000-character
+chunks, 0 errors on 1,947 items. Not wired into the plugin. Same machine as below (M2 Max, 96 GB);
+Python 3.12, mlx 0.32.3, mlx-lm 0.32.0, in a throwaway venv.
+
+| Detector | Test AUC | Planted email AUC | Caught @ dev 2% (test FP) | Blocked with own thresholds: attacks / planted email / benign | Block, warn |
+|---|---:|---:|---:|---|---|
+| Jev `jev-latest` (Venice) | 0.981 | 1.000 | 88.9% (3.5%) | 88.5% / 92.0% / 3.5% | 0.38, 0.20 |
+| Nimble 9B Q4_K_M (Ollama) | 0.927 | 0.990 | 80.6% (3.5%) | 77.8% / 62.7% / 2.1% | 0.53, 0.34 |
+| Lux 9B MLX 4-bit | 0.914 | 0.939 | 63.3% (4.2%) | 53.3% / 22.7% / 2.5% | 0.72, 0.41 |
+
+AUC by slice: planted email 0.939, deepset 0.966, Gandalf 0.982, markup carriers 0.912, image
+carriers 0.933, attacks vs Nostr 0.910, attacks vs web pages 0.706.
+
+Memory and latency (`mem_latency_mlx.py`, `results_mem_latency_mlx.jsonl`, fresh server, same 40
+messages and 12k-character page as `mem_latency_ollama.py`): 4.2 GB on disk, MLX peak allocation
+5.6 GB, server process footprint 12.0 GB (includes MLX's cache of freed Metal buffers), message
+p50 / p95 1.45 s / 1.85 s, 12k-character page 13.7 s.
+
+Findings:
+
+- **Weaker than Nimble on everything that matters here.** Lower AUC overall (0.914 vs 0.927) and
+  on planted email (0.939 vs 0.990); with its own thresholds it blocks 34 of 150 planted-email
+  attacks (Nimble 94, Jev 138).
+- **Pages about prompt injection look like prompt injection.** Four of the ten benign web pages
+  (Wikipedia "Prompt injection", OWASP LLM01, two Simon Willison posts) score 0.78-0.98, almost
+  all from the `choice_kind` question. Those push the dev-fitted block threshold to 0.72, above
+  the median attacked dev email (0.475; clean emails p95 0.19). Nimble scores the same pages at
+  0.43 or lower.
+- Better than Nimble on direct injections (deepset 0.966 vs 0.942) and hidden-text carriers.
+- Speed and memory are similar to Nimble 4-bit in Ollama (1.45 s vs 2.3 s per message), with a
+  smaller weight allocation.
+- Caveats: this is an unofficial quantization whose top answer matched an 8-bit MLX conversion on
+  92.5% of the converter's 400 test questions; the official BF16 model might do better. The
+  shared-prefix cache is approximate (`DECISION_PREFIX_CACHE=0` is the exact path; not tried).
+  The two questions were picked on Jev's dev scores.
+
 ## Local System One models in Ollama 0.35 (2026-09-30)
 
 Ollama 0.35 serves `/v1/systemone`, which takes Jev's request format (model, state, questions)

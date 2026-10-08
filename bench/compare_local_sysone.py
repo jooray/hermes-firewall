@@ -18,7 +18,9 @@ sys.path.insert(0, "../firewall/src")
 from hermes_firewall.policy import Policy  # noqa: E402
 
 MODELS = {"Jev jev-latest (Venice)": "jev_deployed", "Nimble 9B Q8_0": "ollama_nimble-9b", "Nimble 9B Q4_K_M": "ollama_nimble-9b-q4_K_M",
-          "Tev1 4B": "ollama_tev1-4b", "Tev1 0.8B": "ollama_tev1-0.8b"}
+          "Tev1 4B": "ollama_tev1-4b", "Tev1 0.8B": "ollama_tev1-0.8b",
+          "Lux 9B MLX 4-bit": "mlx_lux-9b-4bit", "d1-3B": "d1-3b", "d1-omni-600M": "d1-omni-600m",
+          "RSI-Jev v6.1-VL 4B": "rsi-jev-v6.1-vl-4b"}
 MODELS = {k: v for k, v in MODELS.items() if scores(v, "test") and scores(v, "dev")}
 dev, test = load("dev"), load("test")
 try:

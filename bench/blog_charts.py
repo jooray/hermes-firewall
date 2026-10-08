@@ -3,7 +3,7 @@
 Test items: the whole test split minus items whose extracted text also occurs in dev (identical
 detector input, see evaluate.dev_duplicates) and minus items whose extracted text changed after a
 detector was scored (corpus/test.changed_v5.json), so every detector is compared on the same text.
-Verdicts use each backend's shipped policy file; local System One models (Ollama, scored by
+Verdicts use each backend's shipped policy file; local System One models (Ollama, MLX or the d1 shim, scored by
 score_ollama.py) have no shipped policy and get Jev's policy with thresholds refitted on their own
 dev scores (block @1%, warn @5% dev FPR, as for policy-jev.json). A verdict is block or pass;
 "flagged" (warn threshold, hidden content) is a log entry, not something the model sees. Writes results_blog.json and, with a
@@ -27,8 +27,12 @@ except FileNotFoundError:
     changed = set()
 DET = {  # label: (score tag, policy backend or None, score function for non-policy detectors)
     "Jev (cloud)": ("jev_deployed", "jev", None),
+    "RSI-Jev v6.1-VL 4B": ("rsi-jev-v6.1-vl-4b", "refit", None),
     "Nimble 9B 4-bit": ("ollama_nimble-9b-q4_K_M", "refit", None),
     "Tev1 4B": ("ollama_tev1-4b", "refit", None),
+    "Lux 9B MLX 4-bit": ("mlx_lux-9b-4bit", "refit", None),
+    "d1-3B": ("d1-3b", "refit", None),
+    "d1-omni-600M": ("d1-omni-600m", "refit", None),
     "SemIf Qwen3.5-4B 8-bit": ("semif_q8", "semif", None),
     "SemIf Qwen3.5-4B BF16": ("semif", "semif", None),
     "SemIf Qwen3.5-4B 4-bit": ("semif_q4", "semif", None),
@@ -36,11 +40,13 @@ DET = {  # label: (score tag, policy backend or None, score function for non-pol
     "DeBERTa v2": ("deberta", None, lambda s: s["p"]),
     "Keyword regex": ("regex", None, lambda s: s["p"]),
 }
-CHART = ["Jev (cloud)", "Nimble 9B 4-bit", "SemIf Qwen3.5-4B 8-bit", "Laya 421M", "DeBERTa v2"]
+CHART = ["Jev (cloud)", "RSI-Jev v6.1-VL 4B", "Nimble 9B 4-bit", "d1-3B", "Lux 9B MLX 4-bit", "SemIf Qwen3.5-4B 8-bit", "Laya 421M", "DeBERTa v2"]
 S = {k: scores(tag, "test") for k, (tag, _, _) in DET.items()}
+SD = {k: scores(tag, "dev") for k, (tag, _, _) in DET.items()}
+DET = {k: v for k, v in DET.items() if S.get(k) and SD.get(k)}  # only models with both splits scored
+S, SD = {k: S[k] for k in DET}, {k: SD[k] for k in DET}
 ids = sorted(set(test) - dev_duplicates(dev, test) - changed)
 ids = [i for i in ids if all(i in S[k] for k in DET)]
-SD = {k: scores(tag, "dev") for k, (tag, _, _) in DET.items()}
 
 
 def shipped(b):
@@ -111,8 +117,8 @@ if len(sys.argv) > 1:
     import matplotlib.pyplot as plt
     OUT = sys.argv[1].rstrip("/") + "/"
     INK, INK2, INK3, GRID, PAPER = "#16212b", "#4a5661", "#6f7a84", "#e4e8ec", "#ffffff"
-    COL = {"Jev (cloud)": "#2a78d6", "Nimble 9B 4-bit": "#8a4fd0", "SemIf Qwen3.5-4B 8-bit": "#eb6834", "Laya 421M": "#1baf7a", "DeBERTa v2": "#8a8f98"}
-    LABEL = {"Nimble 9B 4-bit": "Nimble 4-bit (local)", "SemIf Qwen3.5-4B 8-bit": "SemIf 8-bit"}
+    COL = {"Jev (cloud)": "#2a78d6", "RSI-Jev v6.1-VL 4B": "#0f7b9e", "Nimble 9B 4-bit": "#8a4fd0", "Lux 9B MLX 4-bit": "#c9a227", "d1-3B": "#d6457f", "SemIf Qwen3.5-4B 8-bit": "#eb6834", "Laya 421M": "#1baf7a", "DeBERTa v2": "#8a8f98"}
+    LABEL = {"RSI-Jev v6.1-VL 4B": "RSI-Jev 4B (local)", "Nimble 9B 4-bit": "Nimble 4-bit (local)", "Lux 9B MLX 4-bit": "Lux 4-bit (local)", "d1-3B": "d1-3B (local)", "SemIf Qwen3.5-4B 8-bit": "SemIf 8-bit"}
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 11, "text.color": INK, "axes.labelcolor": INK2,
                          "xtick.color": INK3, "ytick.color": INK})
     fig, ax = plt.subplots(figsize=(10, 5.6), dpi=200)
@@ -139,13 +145,15 @@ if len(sys.argv) > 1:
     for s in ax.spines.values():
         s.set_visible(False)
     ax.tick_params(length=0)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.42, 1.12), ncol=len(CHART), frameon=False, fontsize=10, handletextpad=0.3)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.42, 1.17), ncol=(len(CHART) + 1) // 2, frameon=False, fontsize=10, handletextpad=0.3)
     fig.tight_layout()
     fig.savefig(OUT + "auc-by-slice.png", facecolor=PAPER)
 
     C = [("blocked", "Blocked", "#c23b3b", "white"), ("flagged", "Passed, flagged in the log", "#9aa6b1", "white"),
          ("passed", "Passed", "#d6dce1", INK)]
-    short = {"Jev (cloud)": "Jev", "Nimble 9B 4-bit": "Nimble 4-bit (local)", "Tev1 4B": "Tev1 4B (local)",
+    short = {"Jev (cloud)": "Jev", "RSI-Jev v6.1-VL 4B": "RSI-Jev 4B (local)",
+             "Nimble 9B 4-bit": "Nimble 4-bit (local)", "Tev1 4B": "Tev1 4B (local)",
+             "Lux 9B MLX 4-bit": "Lux 4-bit (local)", "d1-3B": "d1-3B (local)",
              "SemIf Qwen3.5-4B 8-bit": "SemIf 8-bit", "Laya 421M": "Laya"}
     fig, ax = plt.subplots(figsize=(10, 1.0 + 0.36 * (len(short) * len(groups) + len(groups))), dpi=200)
     fig.patch.set_facecolor(PAPER)
