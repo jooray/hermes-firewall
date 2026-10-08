@@ -1,0 +1,12 @@
+{
+ "questions": [
+  "imperative_to_reader",
+  "noul_injection"
+ ],
+ "agg": "mean",
+ "block": 0.9021131992340088,
+ "warn": 0.6560733914375305,
+ "hiding_escalates": true,
+ "fitted_on": "bench dev split, block@1% warn@5% dev FPR",
+ "backend": "laya"
+}

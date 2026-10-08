@@ -249,6 +249,15 @@ def test_nimble_8bit_uses_its_own_thresholds(nimble_plugin):
     assert FakeJev.requests[-1] == ("/v1/systemone", "nimble:9b")
 
 
+def test_local_backend_alias_serves_any_jev_compatible_server(nimble_plugin):
+    p = nimble_plugin(PROMPT_FIREWALL_BACKEND="local", PROMPT_FIREWALL_MODEL="rsi-jev-v6.1-vl-4b")
+    assert p.LOCAL_MODEL is True and p.MODEL == "rsi-jev-v6.1-vl-4b"
+    pol = p._score_policy()  # core/policy-rsi-jev-v6.1-vl-4b.json
+    assert pol.model == "rsi-jev-v6.1-vl-4b" and 0.4 < pol.block < 0.5
+    run(p, "web_extract", {}, "Hi" + LONG)
+    assert all(r == ("/v1/systemone", "rsi-jev-v6.1-vl-4b") for r in FakeJev.requests)
+
+
 def test_nimble_unfitted_model_fails_open_not_with_wrong_thresholds(nimble_plugin):
     p = nimble_plugin(PROMPT_FIREWALL_MODEL="tev1:4b")
     raw = "Hi" + LONG + " PLANTED instruction"

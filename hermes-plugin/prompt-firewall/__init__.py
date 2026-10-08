@@ -14,11 +14,12 @@ Backends (PROMPT_FIREWALL_BACKEND):
     (Apple Vision via ocrmac on macOS, else the `tesseract` CLI); with no OCR engine, image
     metadata is still scanned and the image is marked suspicious. PROMPT_FIREWALL_OCR_URL
     optionally points at a hermes-firewall service (/v1/ocr) to use when no local engine exists.
-  - nimble: like jev, but scored by a local System One model in Ollama 0.35+ (/v1/systemone
-    takes Jev's request format). Nothing leaves the machine. PROMPT_FIREWALL_MODEL picks the
-    model (default nimble:9b-q4_K_M; nimble:9b is the 8-bit build), PROMPT_FIREWALL_OLLAMA_URL
-    the server (default http://127.0.0.1:11434). Each model has its own fitted thresholds
-    (core/policy-<model>.json): scores from different models are not on the same scale.
+  - nimble (alias: local): like jev, but scored by a local server that speaks Jev's
+    /v1/systemone — Ollama 0.35+ (Nimble, Tev1) or RSI-Jev (rsi-jev serve). Nothing leaves the
+    machine. PROMPT_FIREWALL_MODEL picks the model (default nimble:9b-q4_K_M; nimble:9b is the
+    8-bit build; rsi-jev-v6.1-vl-4b for RSI-Jev), PROMPT_FIREWALL_OLLAMA_URL the server (default
+    http://127.0.0.1:11434). Each model has its own fitted thresholds (core/policy-<model>.json):
+    scores from different models are not on the same scale.
   - service: send everything to the hermes-firewall service (/v1/scan, /v1/scan-image).
 
 Every scan is recorded, without content, in <HERMES_HOME>/firewall/scans.jsonl. Paths and the
@@ -63,7 +64,7 @@ __version__ = "0.6.0"  # keep in step with plugin.yaml
 # Process-level settings: from the environment, read once. The per-profile settings further down
 # (_cfg) default to these and can be overridden per profile in config.yaml.
 BACKEND = os.environ.get("PROMPT_FIREWALL_BACKEND", "jev")
-LOCAL_MODEL = BACKEND == "nimble"  # scored on this machine: slower, so longer default timeouts
+LOCAL_MODEL = BACKEND in ("nimble", "local")  # scored on this machine: slower, so longer default timeouts
 MODEL = os.environ.get("PROMPT_FIREWALL_MODEL", "nimble:9b-q4_K_M" if LOCAL_MODEL else "jev-latest")
 OLLAMA_URL = os.environ.get("PROMPT_FIREWALL_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 URL = os.environ.get("PROMPT_FIREWALL_URL", "http://127.0.0.1:9030").rstrip("/")  # service / OCR
@@ -426,7 +427,7 @@ def _score_policy():
 
 
 def _policy_local_block() -> float:
-    if BACKEND in ("jev", "nimble"):
+    if BACKEND in ("jev", "local", "nimble"):
         try:
             return _score_policy().local_block or 0.6
         except ScanFailed:
@@ -518,7 +519,7 @@ def _service(path: str, payload: dict, timeout: float) -> Optional[dict]:
 # ---- dispatch --------------------------------------------------------------------------------
 def _scan(text: str, source: str) -> dict:
     key = hashlib.sha256(text.encode("utf-8", "ignore")).hexdigest()
-    if BACKEND in ("jev", "nimble"):
+    if BACKEND in ("jev", "local", "nimble"):
         return _cached(key, lambda: _scan_jev(text))
 
     def call():
@@ -555,7 +556,7 @@ def _scan_image(ref: str, source: str) -> Optional[dict]:
     if data is None:
         return None
     key = hashlib.sha256(data).hexdigest()
-    if BACKEND in ("jev", "nimble"):
+    if BACKEND in ("jev", "local", "nimble"):
         return _cached(key, lambda: _scan_image_jev(data, source))
 
     def call():

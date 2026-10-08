@@ -1,0 +1,16 @@
+{
+ "backend": "nimble",
+ "model": "rsi-jev-v6.1-vl-4b",
+ "questions": [
+  "off_topic_task",
+  "choice_kind"
+ ],
+ "agg": "max",
+ "block": 0.45258843898773193,
+ "warn": 0.24201379716396332,
+ "local_block": 0.7757477760314941,
+ "hiding_escalates": true,
+ "bits": null,
+ "revision": "",
+ "fitted_on": "bench dev split (rsi-jev-v6.1-vl-4b, Jev-compatible /v1/systemone, policy-jev questions), block@1% warn@5% dev FPR, local_block@0.3% dev FPR (= Jev at 0.6)"
+}

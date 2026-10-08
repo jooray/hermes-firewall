@@ -146,6 +146,45 @@ def _own_stub(span: str) -> bool:
     return isinstance(reasons, list) and all(_own_reason(str(r)) for r in reasons)
 
 
+# A stub cut off by output truncation: the fixed field order of the gate's own json.dumps,
+# with the note allowed to end mid-sentence. Nothing variable can hide here — every complete
+# field is validated and the tail must be a prefix of the exact note sentence.
+_STUB_HEAD = re.compile(
+    r"\{\s*['\"]firewall['\"]\s*:\s*['\"]blocked['\"]\s*,\s*"
+    r"['\"]verdict['\"]\s*:\s*['\"](?:injection|suspicious|unavailable|incomplete)['\"]\s*,\s*"
+    r"['\"]score['\"]\s*:\s*(?:null|None|-?\d+(?:\.\d+)?)\s*,\s*"
+    r"['\"]source['\"]\s*:\s*['\"][A-Za-z0-9_:.\-]{0,60}['\"]\s*,\s*"
+    r"['\"]reasons['\"]\s*:\s*\[")
+_STUB_TAIL = re.compile(r"(?s)^(.*?)\]\s*,\s*['\"]quarantine_id['\"]\s*:\s*['\"]([^'\"]*)['\"]"
+                        r"\s*,\s*['\"]note['\"]\s*:\s*(.*)$")
+_REASON_ITEM = re.compile(r"['\"][^'\"]*['\"]")
+
+
+def _own_stub_prefix_len(span: str) -> int:
+    """If span starts with a (possibly truncated) gate stub, the byte length of the part that
+    is verifiably ours — through the end of the note prefix. 0 otherwise. The tail of the text
+    after that length is left in place and scored."""
+    m = _STUB_HEAD.match(span)
+    if not m:
+        return 0
+    t = _STUB_TAIL.match(span[m.end():])
+    if not t:
+        return 0
+    items_raw, qid, tail = t.groups()
+    if not re.fullmatch(r"(?:fw-\d{8}-[0-9a-f]{4,12})?", qid):
+        return 0
+    if re.sub(r"[\s,\[\]]", "", _REASON_ITEM.sub("", items_raw)):
+        return 0  # something other than quoted items and separators
+    if not all(_own_reason(i.group(0)[1:-1]) for i in _REASON_ITEM.finditer(items_raw)):
+        return 0
+    n, q = 0, 1 if tail[:1] in ("'", '"') else 0
+    while n < len(_NOTE) and q + n < len(tail) and tail[q + n] == _NOTE[n]:
+        n += 1
+    if n < 30:  # too short to be the note sentence
+        return 0
+    return m.end() + t.start(3) + q + n
+
+
 def _strip_stubs(text: str) -> str:
     out = text
     while True:
@@ -156,9 +195,13 @@ def _strip_stubs(text: str) -> str:
         end = out.find("}", m.end())
         if start != -1 and end != -1 and end - start <= 1500 and _own_stub(out[start:end + 1]):
             out = out[:start] + " " + out[end + 1:]
-        else:
-            # not (verifiably) ours: leave it in the text so it is scored
-            out = out[:m.start()] + " firewall" + out[m.end():]
+            continue
+        cut = _own_stub_prefix_len(out[start:]) if start != -1 and end == -1 else 0
+        if cut:
+            out = out[:start] + " " + out[start + cut:]
+            continue
+        # not (verifiably) ours: leave it in the text so it is scored
+        out = out[:m.start()] + " firewall" + out[m.end():]
 
 
 def strip_first_party(text: str) -> str:

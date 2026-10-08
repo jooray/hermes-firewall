@@ -52,7 +52,7 @@ don't use OCR.
 
 Extraction and OCR run locally, but the extracted text of every scanned result (web pages, email,
 files, text read from images) is sent to Venice for scoring. If that is not acceptable, score
-locally with Nimble instead (section 3b) and skip this section.
+locally with Nimble or RSI-Jev instead (section 3b) and skip this section.
 
 Scoring uses Jev through Venice's Decisions API. On the benchmark corpus it cost about $0.035 per
 1,000 scans; long pages are split into several requests and cost more. Create a
@@ -92,6 +92,26 @@ are not on the same scale. Any other model is refused (logged as a scanner error
 run with thresholds nobody measured. With this backend the per-request timeout defaults to 60 s
 and the whole-scan deadline to 120 s. If Ollama is not running, scanning fails open like a Venice
 outage.
+
+Any local server that speaks Jev's `/v1/systemone` works the same way (the backend is also
+aliased `local`). [RSI-Jev](https://github.com/Shanghua-Gao/RSI-Jev) v6.1-VL 4B is benchmarked
+too (`bench/RESULTS.md`): on an Apple M2 Max it is the strongest local model by overall ranking
+(test AUC 0.940 against Nimble's 0.927) and it answers short messages in ~1.3 s, but with its own
+thresholds it blocks fewer instructions planted in email (50% against Nimble's 63%). To use it:
+
+```bash
+# in its own venv (it pins transformers < 5.18)
+pip install "rsi-jev[vision] @ git+https://github.com/Shanghua-Gao/RSI-Jev"
+rsi-jev serve v6.1-vl-4b --device mps --port 8000    # --device cuda on an NVIDIA machine
+```
+
+```bash
+PROMPT_FIREWALL_BACKEND=local
+PROMPT_FIREWALL_MODEL=rsi-jev-v6.1-vl-4b
+PROMPT_FIREWALL_OLLAMA_URL=http://127.0.0.1:8000
+```
+
+Its fitted thresholds are in `core/policy-rsi-jev-v6.1-vl-4b.json`.
 
 ## 4. Settings
 

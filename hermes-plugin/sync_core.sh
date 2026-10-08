@@ -7,7 +7,7 @@ SRC=../firewall/src/hermes_firewall
 DST=prompt-firewall/core
 mkdir -p "$DST"
 for f in extract.py trusted.py policy.py questions.py jev_detector.py; do cp "$SRC/$f" "$DST/$f"; done
-cp "$SRC/policy-jev.json" "$DST/policy-jev.json" 2>/dev/null || echo "note: no policy-jev.json yet"
-for f in "$SRC"/policy-nimble-*.json; do [ -e "$f" ] && cp "$f" "$DST/"; done  # nimble backend, one per model
+for f in "$SRC"/policy-*.json; do [ -e "$f" ] && cp "$f" "$DST/"; done  # jev plus one fitted policy per local model
+[ -e "$DST/policy-jev.json" ] || echo "note: no policy-jev.json yet"
 printf '"""Vendored from firewall/src/hermes_firewall by sync_core.sh. Do not edit here."""\n' > "$DST/__init__.py"
 echo "synced: $(ls $DST | tr '\n' ' ')"

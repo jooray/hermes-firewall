@@ -1,0 +1,15 @@
+{
+ "backend": "semif",
+ "questions": [
+  "override",
+  "off_topic_task"
+ ],
+ "agg": "mean",
+ "block": 0.7150382657874923,
+ "warn": 0.20100727430535023,
+ "hiding_escalates": true,
+ "bits": 8,
+ "model": "",
+ "revision": "",
+ "fitted_on": "bench dev split (semif_q8), block@1% warn@5% dev FPR"
+}
