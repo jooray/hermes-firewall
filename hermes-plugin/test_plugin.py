@@ -212,7 +212,7 @@ def nimble_plugin(tmp_path, monkeypatch):
                  "FIREWALL_OCR": "none", "HERMES_HOME": str(tmp_path)}.items():
         monkeypatch.setenv(k, v)
     for k in ("PROMPT_FIREWALL_VENICE_KEY", "VENICE_API_KEY", "PROMPT_FIREWALL_MODEL", "PROMPT_FIREWALL_TIMEOUT",
-              "PROMPT_FIREWALL_LOCAL_FILE_BLOCK"):
+              "PROMPT_FIREWALL_SCAN_DEADLINE", "PROMPT_FIREWALL_LOCAL_FILE_BLOCK"):
         monkeypatch.delenv(k, raising=False)
 
     def load(**env):
@@ -256,6 +256,17 @@ def test_local_backend_alias_serves_any_jev_compatible_server(nimble_plugin):
     assert pol.model == "rsi-jev-v6.1-vl-4b" and 0.4 < pol.block < 0.5
     run(p, "web_extract", {}, "Hi" + LONG)
     assert all(r == ("/v1/systemone", "rsi-jev-v6.1-vl-4b") for r in FakeJev.requests)
+
+
+def test_d3_27b_has_its_thresholds_and_longer_timeouts(nimble_plugin):
+    p = nimble_plugin(PROMPT_FIREWALL_BACKEND="local", PROMPT_FIREWALL_MODEL="d3-27b-q4")
+    pol = p._score_policy()  # core/policy-d3-27b-q4.json
+    assert pol.model == "d3-27b-q4" and 0.85 < pol.block < 0.95 and pol.warn < pol.block <= pol.local_block
+    assert p.TIMEOUT == 240 and p.SCAN_DEADLINE == 600  # ~90 s per 12,000-character chunk on an M2 Max
+    run(p, "web_extract", {}, "Hi" + LONG)
+    assert all(r == ("/v1/systemone", "d3-27b-q4") for r in FakeJev.requests)
+    p = nimble_plugin(PROMPT_FIREWALL_BACKEND="local", PROMPT_FIREWALL_MODEL="d3-27b-q4", PROMPT_FIREWALL_TIMEOUT="30")
+    assert p.TIMEOUT == 30 and p.SCAN_DEADLINE == 600
 
 
 def test_nimble_unfitted_model_fails_open_not_with_wrong_thresholds(nimble_plugin):

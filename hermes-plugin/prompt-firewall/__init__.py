@@ -17,7 +17,8 @@ Backends (PROMPT_FIREWALL_BACKEND):
   - nimble (alias: local): like jev, but scored by a local server that speaks Jev's
     /v1/systemone — Ollama 0.35+ (Nimble, Tev1) or RSI-Jev (rsi-jev serve). Nothing leaves the
     machine. PROMPT_FIREWALL_MODEL picks the model (default nimble:9b-q4_K_M; nimble:9b is the
-    8-bit build; rsi-jev-v6.1-vl-4b for RSI-Jev), PROMPT_FIREWALL_OLLAMA_URL the server (default
+    8-bit build; rsi-jev-v6.1-vl-4b for RSI-Jev; d3-27b-q4 for vLLM-SR d3 27B at 4 bits served by
+    d3-mlx/d3_mlx.py), PROMPT_FIREWALL_OLLAMA_URL the server (default
     http://127.0.0.1:11434). Each model has its own fitted thresholds (core/policy-<model>.json):
     scores from different models are not on the same scale.
   - service: send everything to the hermes-firewall service (/v1/scan, /v1/scan-image).
@@ -59,7 +60,7 @@ import httpx
 
 log = logging.getLogger("prompt_firewall")
 
-__version__ = "0.6.0"  # keep in step with plugin.yaml
+__version__ = "0.6.1"  # keep in step with plugin.yaml
 
 # Process-level settings: from the environment, read once. The per-profile settings further down
 # (_cfg) default to these and can be overridden per profile in config.yaml.
@@ -70,11 +71,14 @@ OLLAMA_URL = os.environ.get("PROMPT_FIREWALL_OLLAMA_URL", "http://127.0.0.1:1143
 URL = os.environ.get("PROMPT_FIREWALL_URL", "http://127.0.0.1:9030").rstrip("/")  # service / OCR
 TOKEN = os.environ.get("PROMPT_FIREWALL_TOKEN", "")
 # Seconds per scanner request. Nimble on an M2 Max: ~2 s per message, ~15 s per 12,000-character
-# chunk, a few seconds more when Ollama has to load the model.
-TIMEOUT = float(os.environ.get("PROMPT_FIREWALL_TIMEOUT", "60" if LOCAL_MODEL else "5"))
+# chunk, a few seconds more when Ollama has to load the model. d3 27B (4-bit, MLX) is slower:
+# ~7 s per message and ~90 s per chunk, so it gets its own defaults.
+_SLOW_MODELS = {"d3-27b-q4": ("240", "600")}  # model: (request timeout, scan deadline)
+_TIMEOUTS = _SLOW_MODELS.get(MODEL, ("60", "120")) if LOCAL_MODEL else ("5", "30")
+TIMEOUT = float(os.environ.get("PROMPT_FIREWALL_TIMEOUT", _TIMEOUTS[0]))
 # The whole scan of one result (all chunks and images) must finish within this many seconds;
 # what is left is marked as not scanned.
-SCAN_DEADLINE = float(os.environ.get("PROMPT_FIREWALL_SCAN_DEADLINE", "120" if LOCAL_MODEL else "30"))
+SCAN_DEADLINE = float(os.environ.get("PROMPT_FIREWALL_SCAN_DEADLINE", _TIMEOUTS[1]))
 GATEWAY = os.environ.get("PROMPT_FIREWALL_GATEWAY", "") == "1"
 WARN_ONLY = os.environ.get("PROMPT_FIREWALL_WARN_ONLY", "") == "1"
 # What happens when scanning itself fails (no Venice credit, Venice down, Jev error, plugin bug):

@@ -31,7 +31,10 @@ machine and installs nothing into Hermes' Python environment. To keep everything
 set `PROMPT_FIREWALL_BACKEND=nimble` to score with Nimble in Ollama 0.35+ instead of Venice (no key;
 ~11 GB of memory; less accurate than Jev, see below). [RSI-Jev](https://github.com/Shanghua-Gao/RSI-Jev)
 v6.1-VL 4B runs behind the same backend (`PROMPT_FIREWALL_BACKEND=local`); it ranks above Nimble
-overall but blocks fewer planted-email attacks — `INSTALL.md` §3b, numbers below.
+overall but blocks fewer planted-email attacks. The most accurate detector on the benchmark, cloud
+included, is vLLM Semantic Router's d3 27B at 4 bits, served on a Mac by
+[d3-mlx](https://github.com/jooray/d3-mlx) (`PROMPT_FIREWALL_MODEL=d3-27b-q4`); it needs ~17 GB and
+takes ~7 s per message. `INSTALL.md` §3b, numbers below.
 
 ## How it works
 
@@ -94,7 +97,8 @@ iteratively, so treat these numbers as exploratory.
 
 | Detector | Test AUC | Planted email instructions | Caught at dev 2% threshold (test FP) |
 |---|---:|---:|---:|
-| **Jev** (Venice, ~0.5 s, ~$0.035 per 1,000 scans on this corpus) | **0.981** | **1.000** | **88.9%** (3.5%) |
+| **d3 27B, 4-bit** (local, [d3-mlx](https://github.com/jooray/d3-mlx), ~17 GB, ~7 s) | **0.990** | 0.999 | **92.4%** (2.5%) |
+| **Jev** (Venice, ~0.5 s, ~$0.035 per 1,000 scans on this corpus) | 0.981 | **1.000** | 88.9% (3.5%) |
 | RSI-Jev v6.1-VL 4B (local, `local` backend, ~21 GB, ~1.3 s) | 0.940 | 0.961 | 79.9% (7.0%) |
 | Nimble 9B, 4-bit (local, Ollama 0.35, ~11 GB, ~2 s) | 0.927 | 0.990 | 80.6% (3.5%) |
 | Tev1 4B (local, Ollama 0.35, ~11 GB, ~1 s) | 0.925 | 0.958 | 79.7% (6.3%) |
@@ -103,7 +107,9 @@ iteratively, so treat these numbers as exploratory.
 | Laya 421M (local, 1 GB) | 0.790 | 0.543 | 39.5% (4.9%) |
 | Keyword regex | 0.602 | – | 21.5% (1.1%) |
 
-With its shipped thresholds, Jev blocks 88.5% of the attacks and 3.5% of the benign items.
+With its shipped thresholds, Jev blocks 88.5% of the attacks and 3.5% of the benign items. d3 27B
+with its shipped thresholds (`PROMPT_FIREWALL_MODEL=d3-27b-q4`) blocks 91.2% and 1.4%, and 91.3% of
+the instructions planted in email (Jev: 92.0%), at about fourteen times Jev's latency.
 Nimble 4-bit, the local backend (`PROMPT_FIREWALL_BACKEND=nimble`), blocks 77.8% and 2.1% with its
 own thresholds, but only 62.7% of the instructions planted in email (Jev: 92.0%). RSI-Jev
 v6.1-VL 4B through the same backend (`PROMPT_FIREWALL_BACKEND=local`) ranks above Nimble overall

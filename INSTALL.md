@@ -113,6 +113,34 @@ PROMPT_FIREWALL_OLLAMA_URL=http://127.0.0.1:8000
 
 Its fitted thresholds are in `core/policy-rsi-jev-v6.1-vl-4b.json`.
 
+**d3 27B (vLLM Semantic Router's Decision 3.0), the most accurate option, local or not.** On the
+benchmark it ranks attacks better than Jev (test AUC 0.990 against 0.981) and with its own
+thresholds blocks 91% of attacks (Jev 89%), 91% of instructions planted in email (Jev 92%) and
+1.4% of benign items (Jev 3.5%). The price is speed and memory: on an Apple M2 Max a short
+message takes ~7 s and a long web page ~90 s per 12,000 characters, and the 4-bit model holds
+17 GB. Fine for email that arrives now and then; slow for an agent that browses a lot. It needs
+Apple Silicon with 32 GB or more and [uv](https://docs.astral.sh/uv/). The server is
+[d3-mlx](https://github.com/jooray/d3-mlx), a single script:
+
+```bash
+git clone https://github.com/jooray/d3-mlx ~/d3-mlx
+uv run ~/d3-mlx/d3_mlx.py fetch d3 ~/models/d3-27b-q4 --bits 4   # streams 57 GB, keeps ~17 GB
+uv run ~/d3-mlx/d3_mlx.py serve ~/models/d3-27b-q4 --port 8120   # keep it running (d3-mlx's README has a LaunchAgent)
+```
+
+```bash
+PROMPT_FIREWALL_BACKEND=local
+PROMPT_FIREWALL_MODEL=d3-27b-q4
+PROMPT_FIREWALL_OLLAMA_URL=http://127.0.0.1:8120
+```
+
+Its thresholds are in `core/policy-d3-27b-q4.json` (block 0.908, warn 0.530, local files and
+shell output 0.929). With this model the per-request timeout defaults to 240 s and the
+whole-scan deadline to 600 s; a result that needs longer is logged as incomplete (see
+`PROMPT_FIREWALL_ON_INCOMPLETE`). The thresholds belong to the 4-bit model fetched as above; the
+smaller d3 sizes rank attacks well but block far fewer of them with a 1% false-positive threshold
+(`bench/RESULTS.md`), so the plugin has no thresholds for them.
+
 ## 4. Settings
 
 Append to `~/.hermes/.env` (make a backup first: `cp ~/.hermes/.env ~/.hermes/.env.bak`):
