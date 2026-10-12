@@ -22,6 +22,8 @@ I write about building things on [my blog](https://juraj.bednar.io/en/blog-en/).
 
 **Background:** [A prompt-injection gate for my AI agent: what worked, what didn’t, and the benchmark](https://juraj.bednar.io/en/blog-en/2026/09/28/a-prompt-injection-gate-for-my-ai-agent-what-worked-what-didnt-and-the-benchmark/)
 
+**Other agents:** [jevguard](https://github.com/Dehumanizer77/jevguard) is an independent implementation of this gate that also supports Claude Code, Codex CLI, Grok Build, Copilot CLI and Cursor, as well as Hermes.
+
 **Install:** follow [`INSTALL.md`](INSTALL.md). It is written so your Hermes agent can do most of it
 for you. In short: `hermes plugins install jooray/hermes-firewall/hermes-plugin/prompt-firewall --enable`,
 a Venice API key in a file, optionally Tesseract for images, then a restart. It needs no second
@@ -177,3 +179,7 @@ use Laya and SemIf as zero-output-token classifiers.
 
 MIT. Datasets keep their own licenses (BIPIA: MIT, deepset/prompt-injections: Apache-2.0, Lakera
 Gandalf: MIT) and are downloaded by `bench/fetch_data.sh`, not redistributed.
+
+## Honorable mention
+
+[jevguard](https://github.com/Dehumanizer77/jevguard) by [Dehumanizer77](https://github.com/Dehumanizer77) takes this gate's extraction code, questions, chunking and thresholds and builds an independent implementation around them. It tracks where each result came from, has one adapter per agent (Claude Code, Codex CLI, Grok Build, Copilot CLI, Cursor, Hermes) and adds a gate in front of risky actions. Its README says which adapters were run against the live program and which were written from documentation only.
