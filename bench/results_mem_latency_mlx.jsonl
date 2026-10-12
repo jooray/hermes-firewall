@@ -2,3 +2,9 @@
 {"model": "d1-3B", "chunk_chars": 12000, "mps_allocated_gb": 7.38, "server_footprint_gb": 7.51, "server_rss_gb": 0.82, "msg_p50_ms": 328, "msg_p95_ms": 447, "page_12k_ms": 3976}
 {"model": "d1-omni-600M", "chunk_chars": 12000, "mps_allocated_gb": 2.5, "server_footprint_gb": 2.79, "server_rss_gb": 0.97, "msg_p50_ms": 60, "msg_p95_ms": 210, "page_12k_ms": 717}
 {"model": "RSI-Jev v6.1-VL 4B", "chunk_chars": 12000, "server_footprint_gb": 21.0, "server_rss_gb": 0.93, "msg_p50_ms": 1737, "msg_p95_ms": 2292, "page_12k_ms": 14005, "note": "fp32 on MPS; measured under heavy host load"}
+{"model": "d3-mini-mlx", "chunk_chars": 12000, "peak_gb": 11.551843344, "active_gb": 8.414127114, "server_footprint_gb": 8.56, "server_rss_gb": 8.84, "msg_p50_ms": 814, "msg_p95_ms": 1163, "page_12k_ms": 10655}
+{"model": "d3-flash-mlx d3-flash-q8", "chunk_chars": 12000, "peak_gb": 13.697904656, "active_gb": 10.53571073, "server_footprint_gb": 11.0, "server_rss_gb": 10.91, "msg_p50_ms": 1987, "msg_p95_ms": 3040, "page_12k_ms": 26302, "note": "8-bit; measured while a quantization job ran on the same machine"}
+{"model": "d3-27b-mlx d3-27b-q4", "chunk_chars": 12000, "peak_gb": 23.23974145, "active_gb": 17.045917706, "server_footprint_gb": 16.0, "server_rss_gb": 17.27, "msg_p50_ms": 6834, "msg_p95_ms": 8670, "page_12k_ms": 89469, "note": "4-bit"}
+{"model": "d3-edge-mlx", "chunk_chars": 12000, "peak_gb": 2.432826746, "active_gb": 0.988508554, "server_footprint_gb": 2.96, "server_rss_gb": 1.58, "msg_p50_ms": 88, "msg_p95_ms": 100, "page_12k_ms": 858}
+{"model": "d3-lite-mlx", "chunk_chars": 12000, "peak_gb": 3.523542846, "active_gb": 1.505837194, "server_footprint_gb": 2.21, "server_rss_gb": 2.09, "msg_p50_ms": 203, "msg_p95_ms": 233, "page_12k_ms": 2123}
+{"model": "d3-nano-mlx", "chunk_chars": 12000, "peak_gb": 5.68659683, "active_gb": 3.765749898, "server_footprint_gb": 4.41, "server_rss_gb": 4.3, "msg_p50_ms": 334, "msg_p95_ms": 503, "page_12k_ms": 4246}

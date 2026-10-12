@@ -2,6 +2,114 @@
 
 Current results first; the sections after "History" are earlier runs, kept for the record.
 
+## Decision 3.0 (vLLM Semantic Router d3), MLX (2026-10-12)
+
+[Decision 3.0](https://huggingface.co/collections/vllm-sr/decision-30) is six System One
+checkpoints from vLLM Semantic Router: d3 (26B, on Qwen3.8-27B), d3-flash (8.4B, Qwen3.5-9B),
+d3-mini (4.5B), d3-nano (2.2B), d3-lite (0.85B) and d3-edge (0.59B), all Apache-2.0, text +
+images + video, Jev's question schema (choice, noul, score). Each question is one forward pass:
+the options are listed under single-token codes and a 255-way readout scores the codes at the
+last position. The full-attention layers are noncausal (`attention_mode:
+noncausal_full_attention`), the Gated DeltaNet layers stay causal.
+
+**MLX.** Community MLX conversions of every d3 size exist (`ahmedandaloes/d3*-mlx`, bf16, text
+only). Their weights are byte-identical to the official checkpoints, but the bundled `d3_mlx.py`
+gives wrong answers in three ways: it loads the zero-centred Qwen3.5 RMSNorm weights without
+mlx-vlm's +1 shift, it indexes the 255 readout logits by the codes' token ids instead of their
+position, and it runs the full-attention layers causally. A ~300-line runtime ([d3-mlx](https://github.com/jooray/d3-mlx)) uses the conversions' weights with the official `d3_format.py` prompt contract, its own
+layer loop (mlx-vlm's `Qwen3_5Model.__call__` builds the wrong masks for d3's irregular layer
+patterns) and the noncausal attention. Checked against the official torch runtime
+(`AutoModel.from_pretrained("vllm-sr/d3-edge", trust_remote_code=True)`) on 12 dev items and
+three questions: max |Δp| 0.018, mean 0.003. Served on `/v1/systemone` and scored with
+`score_ollama.py --tag d3-* --url ...` like the other local models, 0 errors. d3-edge, -lite,
+-nano and -mini ran in bf16. d3-flash ran in 8-bit and d3 27B in 4-bit (MLX affine, group 64,
+linear layers only): the disk could not hold bf16 copies, so the conversions' weights were
+streamed over HTTP range requests and quantized tensor by tensor. 8-bit against bf16 on 20 dev
+items: mean |Δp| 0.007 (edge), 0.010 (nano), 0.004 (mini). Python 3.12, mlx 0.32.3, mlx-vlm 0.7.6, transformers 5.19.0. The runtime is published as
+[d3-mlx](https://github.com/jooray/d3-mlx) (it reproduces these d3-edge scores exactly); the
+plugin's local backend uses d3 27B 4-bit as `PROMPT_FIREWALL_MODEL=d3-27b-q4` (INSTALL.md §3b).
+
+| Detector | Test AUC | Planted email AUC | Caught @ dev 2% (test FP) | Blocked with own thresholds: attacks / planted email / benign | Block, warn |
+|---|---:|---:|---:|---|---|
+| Jev `jev-latest` (Venice) | 0.981 | 1.000 | 88.9% (3.5%) | 88.5% / 92.0% / 3.5% | 0.38, 0.20 |
+| **d3 27B, MLX 4-bit** (shipped policy) | **0.990** | 0.999 | **92.4% (2.5%)** | **91.2%** / 91.3% / **1.4%** | 0.91, 0.53 |
+| d3-flash 9B, MLX 8-bit | 0.975 | 0.999 | 75.5% (3.2%) | 74.4% / 54.0% / 2.8% | 0.88, 0.88 |
+| d3-mini 4.5B, MLX bf16 | 0.958 | 1.000 | 58.2% (2.8%) | 56.8% / 28.0% / 2.5% | 0.97, 0.97 |
+| d3-lite 0.85B, MLX bf16 | 0.933 | 0.961 | 74.8% (6.7%) | 57.3% / 28.0% / 1.1% | 0.90, 0.54 |
+| d3-nano 2.2B, MLX bf16 | 0.927 | 0.975 | 66.3% (4.6%) | 58.0% / 31.3% / 1.8% | 0.92, 0.60 |
+| d3-edge 0.6B, MLX bf16 | 0.881 | 0.881 | 58.2% (8.8%) | 52.0% / 14.0% / 3.5% | 0.84, 0.42 |
+| RSI-Jev v6.1-VL 4B | 0.940 | 0.961 | 79.9% (7.0%) | 72.3% / 50.0% / 3.5% | 0.45, 0.24 |
+| Nimble 9B Q4_K_M (Ollama) | 0.927 | 0.990 | 80.6% (3.5%) | 77.8% / 62.7% / 2.1% | 0.53, 0.34 |
+
+AUC by slice:
+
+| Detector | Planted email | deepset | Gandalf | Markup carriers | Image carriers | Attacks vs Nostr | Attacks vs web pages |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Jev `jev-latest` (Venice) | 1.000 | 0.986 | 0.986 | 0.970 | 0.927 | 0.987 | 0.975 |
+| d3 27B, MLX 4-bit | 0.999 | 0.994 | 0.996 | 0.999 | 0.973 | 0.993 | 0.999 |
+| d3-flash 9B, MLX 8-bit | 0.999 | 0.998 | 0.995 | 0.977 | 0.974 | 0.982 | 0.997 |
+| d3-mini 4.5B | 1.000 | 0.998 | 0.988 | 0.962 | 0.953 | 0.972 | 0.990 |
+| d3-lite 0.85B | 0.961 | 0.990 | 0.985 | 0.896 | 0.932 | 0.938 | 0.857 |
+| d3-nano 2.2B | 0.975 | 0.991 | 0.984 | 0.954 | 0.930 | 0.931 | 0.827 |
+| d3-edge 0.6B | 0.881 | 0.961 | 0.987 | 0.889 | 0.910 | 0.858 | 0.723 |
+
+Memory and latency (`mem_latency_mlx.py`, fresh server, same 40 messages and 12k-character page;
+two questions = two full forward passes, since noncausal attention rules out sharing the state's
+prefix between questions; * measured while a quantization job ran on the same machine, so an
+upper bound):
+
+| Model | Download | MLX active / peak | Message p50 / p95 | 12k-char page |
+|---|---:|---:|---:|---:|
+| d3 27B, 4-bit | 57 GB bf16 (quantized while streaming) | 17.0 / 23.2 GB | 6.83 s / 8.67 s | 89.5 s |
+| d3-flash 9B, 8-bit | 21 GB bf16 (quantized while streaming) | 10.5 / 13.7 GB | 1.99 s / 3.04 s* | 26.3 s* |
+| d3-mini 4.5B, bf16 | 9.1 GB | 8.4 / 11.6 GB | 0.81 s / 1.16 s | 10.7 s |
+| d3-nano 2.2B, bf16 | 4.4 GB | 3.8 / 5.7 GB | 0.33 s / 0.50 s | 4.2 s |
+| d3-lite 0.85B, bf16 | 1.7 GB | 1.5 / 3.5 GB | 0.20 s / 0.23 s | 2.1 s |
+| d3-edge 0.6B, bf16 | 1.2 GB | 1.0 / 2.4 GB | 0.09 s / 0.10 s | 0.9 s |
+
+Findings:
+
+- **d3 27B at 4 bits is the first local detector that ranks better than Jev**: test AUC 0.990
+  against 0.981, 92.4% of attacks caught at the dev-2% threshold against 88.9%, with fewer
+  test false positives (2.5% against 3.5%). With its shipped thresholds
+  (`core/policy-d3-27b-q4.json`, see the calibration note below) it blocks 395 of 433 attacks
+  (Jev 383), 137 of 150 planted-email attacks (Jev 138) and 4 of 285 benign items (Jev 10). Its
+  attacked emails have a dev median score of 0.996 (clean copies 0.006), so the planted-email
+  gap every other local model had is gone. It is also the best detector on markup carriers
+  (0.999) and on attacks against web pages (0.999, Jev 0.975), and it gives the four pages
+  *about* prompt injection 0.01-0.12 (Jev 0.03-0.31, Lux 0.78-0.98). The cost is speed and
+  memory: 6.8 s per message and 90 s per 12k-character page on the M2 Max, 17 GB in memory.
+- **Calibration of the 27B.** The plain fit (block at 1%, warn at 5% dev FPR) gives block = warn =
+  local_block = 0.89372, 0.00008 above the score of one recurring benign text: the dev split holds
+  40 identical copies of a three-word Nostr event (`channel:__roster [id:178]`, 6.6% of benign
+  dev; the test split has 47 more), which the 27B scores 0.893643 every time. A threshold that
+  close would block or pass every copy of that event depending on rounding on the user's
+  machine. The shipped policy is fitted with `fit_local_policy.py --dedup --block-midgap 0.005`:
+  identical dev texts count once, and block sits in the middle of the gap between that event
+  (0.894) and the next benign dev score (0.923), at 0.908; warn is 0.530 (5% of distinct benign
+  dev texts) and local_block 0.929. For comparison, the plain fit blocks 400 / 140 / 7 on test
+  and a 1% fit with duplicates counted once (block 0.838) 407 / 142 / 19, most of the extra
+  false positives being the near-empty Nostr event.
+- **d3-flash (8-bit) ranks almost like Jev** (0.975; web pages 0.997 and image carriers 0.974
+  beat Jev), **d3-mini (bf16) is next** (0.958, planted email 1.000), and **d3-lite at 0.85B
+  ranks like Nimble 9B** (0.933 against 0.927) at a tenth of the time per message.
+- **But below the 27B, ranking does not turn into blocking.** The top of flash's and mini's
+  benign dev scores is hidden-content carriers (0.92-0.99 on flash, up to 0.995 on mini) and odd
+  Nostr posts (`nlogpost:` lines, a row of emoji), so the 1%-dev-FPR block threshold lands at
+  0.88 (flash) and 0.97 (mini). With it flash blocks 81 of 150 planted-email attacks and mini
+  42, although both rank planted email at 0.999-1.000: the attacked emails' dev median is 0.90 on
+  flash and 0.92 on mini, against 0.996 on the 27B. Warn equals block for flash, mini and the
+  27B because the dev split holds 40 identical near-empty Nostr events (`channel:__roster
+  [id:178]`) that they score 0.875, 0.969 and 0.894, so both the 1% and 5% thresholds land on
+  that one value. Counting identical texts once moves warn to 0.53-0.63 but leaves flash's and
+  mini's block thresholds where they are. Per-source thresholds or different question wording
+  might rescue flash and mini; neither was tried (the two questions were picked on Jev's dev
+  scores).
+- Caveats: the 27B and flash were quantized (4-bit and 8-bit); MLX on an M2 Max is not the GPU
+  path vLLM-SR benchmarks; d3's image and video inputs were not tested (the MLX conversions have
+  no vision runtime); the d3 latencies are two forward passes per chunk because noncausal
+  attention can't share a prefix cache across questions.
+
 ## RSI-Jev v6.1-VL 4B, local on Apple Silicon (2026-10-08)
 
 [RSI-Jev v6.1-VL 4B](https://huggingface.co/shgao/rsi-jev-v6.1-vl-4b) (4.69B; Qwen3.5-4B-Base

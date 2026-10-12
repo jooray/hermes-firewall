@@ -568,6 +568,384 @@
    "ms_p50": 1335.5287499725819,
    "ms_p95": 2426.0803750366904,
    "errors_test": 0
+  },
+  "d3 27B MLX 4-bit": {
+   "auc": {
+    "Overall": 0.9896924759936793,
+    "Planted instruction in email (BIPIA)": 0.9994594594594595,
+    "Direct injections (deepset)": 0.9937499999999999,
+    "Gandalf vs all benign": 0.9961152882205514,
+    "Markup carriers (attributes, scripts)": 0.9990196078431373,
+    "Image carriers": 0.9728009259259259,
+    "All attacks vs Nostr posts": 0.9930715935334873,
+    "All attacks vs web pages": 0.9988452655889145
+   },
+   "dev_n": 1125,
+   "dev_auc": 0.993741382487308,
+   "tpr_at_dev2": 0.9237875288683602,
+   "fpr_at_dev2": 0.02456140350877193,
+   "refit": {
+    "block": 0.9081798270543613,
+    "warn": 0.5301924071360614,
+    "verdicts": {
+     "all attacks": {
+      "n": 433,
+      "blocked": 395,
+      "flagged": 29,
+      "passed": 9
+     },
+     "planted email": {
+      "n": 150,
+      "blocked": 137,
+      "flagged": 12,
+      "passed": 1
+     },
+     "benign": {
+      "n": 285,
+      "blocked": 4,
+      "flagged": 51,
+      "passed": 230
+     }
+    }
+   },
+   "jev_thresholds": {
+    "all attacks": {
+     "n": 433,
+     "blocked": 426,
+     "flagged": 4,
+     "passed": 3
+    },
+    "planted email": {
+     "n": 150,
+     "blocked": 150,
+     "flagged": 0,
+     "passed": 0
+    },
+    "benign": {
+     "n": 285,
+     "blocked": 54,
+     "flagged": 23,
+     "passed": 208
+    }
+   },
+   "ms_p50": 6418.9918749034405,
+   "ms_p95": 11666.831291047856,
+   "errors_test": 0
+  },
+  "d3-flash 9B MLX 8-bit": {
+   "auc": {
+    "Overall": 0.9751711843118188,
+    "Planted instruction in email (BIPIA)": 0.9992792792792793,
+    "Direct injections (deepset)": 0.9979166666666667,
+    "Gandalf vs all benign": 0.9949248120300752,
+    "Markup carriers (attributes, scripts)": 0.9774509803921569,
+    "Image carriers": 0.9739583333333334,
+    "All attacks vs Nostr posts": 0.9815242494226328,
+    "All attacks vs web pages": 0.9965357967667436
+   },
+   "dev_n": 1125,
+   "dev_auc": 0.9716233646581905,
+   "tpr_at_dev2": 0.7551963048498845,
+   "fpr_at_dev2": 0.031578947368421054,
+   "refit": {
+    "block": 0.8840709262783011,
+    "warn": 0.8774574243727223,
+    "verdicts": {
+     "all attacks": {
+      "n": 433,
+      "blocked": 322,
+      "flagged": 10,
+      "passed": 101
+     },
+     "planted email": {
+      "n": 150,
+      "blocked": 81,
+      "flagged": 3,
+      "passed": 66
+     },
+     "benign": {
+      "n": 285,
+      "blocked": 8,
+      "flagged": 26,
+      "passed": 251
+     }
+    }
+   },
+   "jev_thresholds": {
+    "all attacks": {
+     "n": 433,
+     "blocked": 416,
+     "flagged": 14,
+     "passed": 3
+    },
+    "planted email": {
+     "n": 150,
+     "blocked": 144,
+     "flagged": 6,
+     "passed": 0
+    },
+    "benign": {
+     "n": 285,
+     "blocked": 36,
+     "flagged": 35,
+     "passed": 214
+    }
+   },
+   "ms_p50": 1791.6763750836253,
+   "ms_p95": 3157.38995897118,
+   "errors_test": 0
+  },
+  "d3-mini 4.5B MLX": {
+   "auc": {
+    "Overall": 0.9575787042664398,
+    "Planted instruction in email (BIPIA)": 0.9996396396396395,
+    "Direct injections (deepset)": 0.9982142857142857,
+    "Gandalf vs all benign": 0.98765664160401,
+    "Markup carriers (attributes, scripts)": 0.961764705882353,
+    "Image carriers": 0.953125,
+    "All attacks vs Nostr posts": 0.9719784449576597,
+    "All attacks vs web pages": 0.9901847575057737
+   },
+   "dev_n": 1125,
+   "dev_auc": 0.9568854323529224,
+   "tpr_at_dev2": 0.581986143187067,
+   "fpr_at_dev2": 0.028070175438596492,
+   "refit": {
+    "block": 0.970903334289128,
+    "warn": 0.9693639537964144,
+    "verdicts": {
+     "all attacks": {
+      "n": 433,
+      "blocked": 246,
+      "flagged": 15,
+      "passed": 172
+     },
+     "planted email": {
+      "n": 150,
+      "blocked": 42,
+      "flagged": 2,
+      "passed": 106
+     },
+     "benign": {
+      "n": 285,
+      "blocked": 7,
+      "flagged": 27,
+      "passed": 251
+     }
+    }
+   },
+   "jev_thresholds": {
+    "all attacks": {
+     "n": 433,
+     "blocked": 417,
+     "flagged": 4,
+     "passed": 12
+    },
+    "planted email": {
+     "n": 150,
+     "blocked": 144,
+     "flagged": 2,
+     "passed": 4
+    },
+    "benign": {
+     "n": 285,
+     "blocked": 58,
+     "flagged": 19,
+     "passed": 208
+    }
+   },
+   "ms_p50": 769.245250034146,
+   "ms_p95": 1354.3680830625817,
+   "errors_test": 0
+  },
+  "d3-nano 2.2B MLX": {
+   "auc": {
+    "Overall": 0.9274988857825858,
+    "Planted instruction in email (BIPIA)": 0.9753153153153152,
+    "Direct injections (deepset)": 0.9913690476190475,
+    "Gandalf vs all benign": 0.9842731829573934,
+    "Markup carriers (attributes, scripts)": 0.953921568627451,
+    "Image carriers": 0.9299768518518517,
+    "All attacks vs Nostr posts": 0.9312804721580703,
+    "All attacks vs web pages": 0.8265011547344111
+   },
+   "dev_n": 1125,
+   "dev_auc": 0.9627056289434056,
+   "tpr_at_dev2": 0.6628175519630485,
+   "fpr_at_dev2": 0.0456140350877193,
+   "refit": {
+    "block": 0.9242724020974343,
+    "warn": 0.6001601089847918,
+    "verdicts": {
+     "all attacks": {
+      "n": 433,
+      "blocked": 251,
+      "flagged": 98,
+      "passed": 84
+     },
+     "planted email": {
+      "n": 150,
+      "blocked": 47,
+      "flagged": 46,
+      "passed": 57
+     },
+     "benign": {
+      "n": 285,
+      "blocked": 5,
+      "flagged": 46,
+      "passed": 234
+     }
+    }
+   },
+   "jev_thresholds": {
+    "all attacks": {
+     "n": 433,
+     "blocked": 368,
+     "flagged": 16,
+     "passed": 49
+    },
+    "planted email": {
+     "n": 150,
+     "blocked": 107,
+     "flagged": 12,
+     "passed": 31
+    },
+    "benign": {
+     "n": 285,
+     "blocked": 49,
+     "flagged": 36,
+     "passed": 200
+    }
+   },
+   "ms_p50": 385.52825001534075,
+   "ms_p95": 606.8256249418482,
+   "errors_test": 0
+  },
+  "d3-lite 0.85B MLX": {
+   "auc": {
+    "Overall": 0.9331793687451886,
+    "Planted instruction in email (BIPIA)": 0.9607207207207207,
+    "Direct injections (deepset)": 0.9904761904761905,
+    "Gandalf vs all benign": 0.9848684210526315,
+    "Markup carriers (attributes, scripts)": 0.8960784313725491,
+    "Image carriers": 0.9322916666666666,
+    "All attacks vs Nostr posts": 0.9379009494482936,
+    "All attacks vs web pages": 0.8565242494226328
+   },
+   "dev_n": 1125,
+   "dev_auc": 0.9696504705082506,
+   "tpr_at_dev2": 0.7482678983833718,
+   "fpr_at_dev2": 0.06666666666666667,
+   "refit": {
+    "block": 0.9016630301074909,
+    "warn": 0.5443568987952738,
+    "verdicts": {
+     "all attacks": {
+      "n": 433,
+      "blocked": 248,
+      "flagged": 118,
+      "passed": 67
+     },
+     "planted email": {
+      "n": 150,
+      "blocked": 42,
+      "flagged": 59,
+      "passed": 49
+     },
+     "benign": {
+      "n": 285,
+      "blocked": 3,
+      "flagged": 55,
+      "passed": 227
+     }
+    }
+   },
+   "jev_thresholds": {
+    "all attacks": {
+     "n": 433,
+     "blocked": 379,
+     "flagged": 31,
+     "passed": 23
+    },
+    "planted email": {
+     "n": 150,
+     "blocked": 115,
+     "flagged": 19,
+     "passed": 16
+    },
+    "benign": {
+     "n": 285,
+     "blocked": 56,
+     "flagged": 49,
+     "passed": 180
+    }
+   },
+   "ms_p50": 235.4608749737963,
+   "ms_p95": 573.5193330328912,
+   "errors_test": 0
+  },
+  "d3-edge 0.6B MLX": {
+   "auc": {
+    "Overall": 0.8812122685466555,
+    "Planted instruction in email (BIPIA)": 0.8805405405405407,
+    "Direct injections (deepset)": 0.9607142857142856,
+    "Gandalf vs all benign": 0.9868107769423559,
+    "Markup carriers (attributes, scripts)": 0.8892156862745099,
+    "Image carriers": 0.9097222222222222,
+    "All attacks vs Nostr posts": 0.8578906851424173,
+    "All attacks vs web pages": 0.7234411085450346
+   },
+   "dev_n": 1125,
+   "dev_auc": 0.9562087391903827,
+   "tpr_at_dev2": 0.581986143187067,
+   "fpr_at_dev2": 0.08771929824561403,
+   "refit": {
+    "block": 0.8412571141404759,
+    "warn": 0.4240820832276965,
+    "verdicts": {
+     "all attacks": {
+      "n": 433,
+      "blocked": 225,
+      "flagged": 112,
+      "passed": 96
+     },
+     "planted email": {
+      "n": 150,
+      "blocked": 21,
+      "flagged": 64,
+      "passed": 65
+     },
+     "benign": {
+      "n": 285,
+      "blocked": 10,
+      "flagged": 60,
+      "passed": 215
+     }
+    }
+   },
+   "jev_thresholds": {
+    "all attacks": {
+     "n": 433,
+     "blocked": 340,
+     "flagged": 38,
+     "passed": 55
+    },
+    "planted email": {
+     "n": 150,
+     "blocked": 88,
+     "flagged": 29,
+     "passed": 33
+    },
+    "benign": {
+     "n": 285,
+     "blocked": 55,
+     "flagged": 45,
+     "passed": 185
+    }
+   },
+   "ms_p50": 102.94650006107986,
+   "ms_p95": 217.2697080532089,
+   "errors_test": 0
   }
  }
 }

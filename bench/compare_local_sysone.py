@@ -1,4 +1,4 @@
-"""Can a local System One model (Ollama 0.35: Nimble 9B, Tev1 4B / 0.8B) replace jev-latest?
+"""Can a local System One model (Ollama 0.35: Nimble 9B, Tev1 4B / 0.8B; MLX; d1; d3; ...) replace jev-latest?
 
 Every model is scored by score_jev.py / score_ollama.py through the plugin's Jev client with the
 deployed two questions, then judged like blog_charts.py: same 718 test items (dev duplicates and
@@ -9,6 +9,7 @@ results_local_sysone.json.
 """
 import json
 import sys
+from importlib.resources import files
 
 from sklearn.metrics import roc_auc_score
 
@@ -20,7 +21,9 @@ from hermes_firewall.policy import Policy  # noqa: E402
 MODELS = {"Jev jev-latest (Venice)": "jev_deployed", "Nimble 9B Q8_0": "ollama_nimble-9b", "Nimble 9B Q4_K_M": "ollama_nimble-9b-q4_K_M",
           "Tev1 4B": "ollama_tev1-4b", "Tev1 0.8B": "ollama_tev1-0.8b",
           "Lux 9B MLX 4-bit": "mlx_lux-9b-4bit", "d1-3B": "d1-3b", "d1-omni-600M": "d1-omni-600m",
-          "RSI-Jev v6.1-VL 4B": "rsi-jev-v6.1-vl-4b"}
+          "RSI-Jev v6.1-VL 4B": "rsi-jev-v6.1-vl-4b",
+          "d3 27B MLX 4-bit": "d3-27b-q4", "d3-flash 9B MLX 8-bit": "d3-flash-q8", "d3-mini 4.5B MLX": "d3-mini",
+          "d3-nano 2.2B MLX": "d3-nano", "d3-lite 0.85B MLX": "d3-lite", "d3-edge 0.6B MLX": "d3-edge"}
 MODELS = {k: v for k, v in MODELS.items() if scores(v, "test") and scores(v, "dev")}
 dev, test = load("dev"), load("test")
 try:
@@ -74,8 +77,12 @@ for k in MODELS:
         m["dev_auc"] = roc_auc_score(dy, dv)
         m["tpr_at_dev2"] = sum(a >= thr for a, l in zip(vs, ys) if l) / sum(ys)
         m["fpr_at_dev2"] = sum(a >= thr for a, l in zip(vs, ys) if not l) / (len(ys) - sum(ys))
-        refit = Policy(**(jev.describe() | {"block": float(pick_threshold(pos, neg, 0.01)),
-                                            "warn": float(pick_threshold(pos, neg, 0.05))}))
+        shipped = files("hermes_firewall").joinpath(f"policy-{MODELS[k]}.json")
+        if shipped.is_file():  # a model whose shipped policy was fitted another way (d3-27b-q4)
+            refit = Policy(**json.loads(shipped.read_text()))
+        else:
+            refit = Policy(**(jev.describe() | {"block": float(pick_threshold(pos, neg, 0.01)),
+                                                "warn": float(pick_threshold(pos, neg, 0.05))}))
         m["refit"] = {"block": refit.block, "warn": refit.warn, "verdicts": verdicts(refit, S[k])}
     m["jev_thresholds"] = verdicts(jev, S[k])
     ms = [S[k][i]["text"]["ms"] for i in ids]
