@@ -573,3 +573,28 @@ markup carriers (three benign `alt` texts).
 
 Extraction on a small Linux host (Celeron J3455, Hermes' own Python 3.13, no extra packages): ~3 ms for an
 email, 0.12-0.38 s for typical raw pages, 1.5 s for Wikipedia's 870 KB Bitcoin article.
+
+## Amos 1 (mukaddamzaid/amos-1-*, 2026-10-15)
+
+[Amos 1](https://huggingface.co/collections/mukaddamzaid/amos-1): large 27B, medium 9B, small 2B (Qwen3.5-family,
+text + images) and mini (Ettin-400M encoder + SigLIP2, ~0.5B). Same `/v1/systemone` request as Jev; all questions
+answered in one pass (an `<answer>` marker per question, letters read from the LM head: tied embeddings on small,
+`lm_head` on medium and large). Small and large are non-causal, medium is causal. The official server is
+CUDA/PyTorch only, so small and medium ran on an own MLX runtime (bf16) written to Amos' prompt format, images
+through mlx-vlm's Qwen3.5 vision tower; checked against the hosted `api.amos.scira.ai` with synthetic probes
+(small |dp| <= 0.02, medium <= 0.005, same 692 image tokens). Mini ran on the official PyTorch package, CPU, 4 threads.
+Scored with `score_ollama.py` (two questions, 12k chunks, 0 errors) and `score_rsijev_images.py` (pixels).
+Large was not run: 27B at 4 bits crashed the laptop. The runtime script lived only in a session scratchpad and
+was lost in that crash.
+
+| Detector | Test AUC | Planted email AUC | Caught @ dev 2% (test FP) | Own thresholds: attacks / planted email / benign blocked | Block, warn | p50 |
+|---|---:|---:|---:|---|---|---:|
+| Amos medium 9B | 0.926 | 0.959 | 72.5% (2.1%) | 308 / 60 / 6 | 0.31, 0.12 | 0.86 s* |
+| Amos small 2B | 0.915 | 0.961 | 72.7% (8.8%) | 273 / 75 / 19 | 0.72, 0.29 | 0.23 s |
+| Amos mini 0.5B | 0.703 | 0.731 | 35.1% (8.1%) | 139 / 31 / 18 | | 0.21 s (CPU) |
+
+(* measured while other jobs ran; memory not measured. Totals: 433 attacks, 150 planted email, 285 benign.)
+
+Image carriers (102 items, 48 attacks), AUC with OCR text vs the picture: medium 0.963 / 0.948, small 0.935 /
+0.917, mini 0.851 / 0.702 (mini with the picture blocks 48/48 attacks and 40 benign). Unlike RSI-Jev, the
+picture never beats OCR. `amos_chart.py` draws the blog chart.

@@ -142,5 +142,149 @@
   "attacks_blocked": 23,
   "benign_blocked": 2,
   "block": 0.45258843898773193
+ },
+ "Amos 1 medium 9B | OCR text | all image items": {
+  "n": 102,
+  "attacks": 48,
+  "auc": 0.9625771604938271,
+  "attacks_blocked": 42,
+  "benign_blocked": 1,
+  "block": 0.3106163442134857
+ },
+ "Amos 1 medium 9B | OCR text | text in pixels": {
+  "n": 42,
+  "attacks": 18,
+  "auc": 0.9791666666666666,
+  "attacks_blocked": 15,
+  "benign_blocked": 0,
+  "block": 0.3106163442134857
+ },
+ "Amos 1 medium 9B | OCR text | text in metadata": {
+  "n": 66,
+  "attacks": 30,
+  "auc": 0.9666666666666667,
+  "attacks_blocked": 27,
+  "benign_blocked": 1,
+  "block": 0.3106163442134857
+ },
+ "Amos 1 medium 9B | picture | all image items": {
+  "n": 102,
+  "attacks": 48,
+  "auc": 0.9475308641975309,
+  "attacks_blocked": 43,
+  "benign_blocked": 4,
+  "block": 0.3106163442134857
+ },
+ "Amos 1 medium 9B | picture | text in pixels": {
+  "n": 42,
+  "attacks": 18,
+  "auc": 0.9652777777777779,
+  "attacks_blocked": 16,
+  "benign_blocked": 0,
+  "block": 0.3106163442134857
+ },
+ "Amos 1 medium 9B | picture | text in metadata": {
+  "n": 66,
+  "attacks": 30,
+  "auc": 0.9379629629629629,
+  "attacks_blocked": 27,
+  "benign_blocked": 4,
+  "block": 0.3106163442134857
+ },
+ "Amos 1 small 2B | OCR text | all image items": {
+  "n": 102,
+  "attacks": 48,
+  "auc": 0.9351851851851852,
+  "attacks_blocked": 36,
+  "benign_blocked": 0,
+  "block": 0.7156763076782227
+ },
+ "Amos 1 small 2B | OCR text | text in pixels": {
+  "n": 42,
+  "attacks": 18,
+  "auc": 0.9398148148148149,
+  "attacks_blocked": 13,
+  "benign_blocked": 0,
+  "block": 0.7156763076782227
+ },
+ "Amos 1 small 2B | OCR text | text in metadata": {
+  "n": 66,
+  "attacks": 30,
+  "auc": 0.9416666666666667,
+  "attacks_blocked": 23,
+  "benign_blocked": 0,
+  "block": 0.7156763076782227
+ },
+ "Amos 1 small 2B | picture | all image items": {
+  "n": 102,
+  "attacks": 48,
+  "auc": 0.9174382716049383,
+  "attacks_blocked": 38,
+  "benign_blocked": 3,
+  "block": 0.7156763076782227
+ },
+ "Amos 1 small 2B | picture | text in pixels": {
+  "n": 42,
+  "attacks": 18,
+  "auc": 0.9259259259259258,
+  "attacks_blocked": 14,
+  "benign_blocked": 0,
+  "block": 0.7156763076782227
+ },
+ "Amos 1 small 2B | picture | text in metadata": {
+  "n": 66,
+  "attacks": 30,
+  "auc": 0.9231481481481482,
+  "attacks_blocked": 24,
+  "benign_blocked": 3,
+  "block": 0.7156763076782227
+ },
+ "Amos 1 mini 0.5B | OCR text | all image items": {
+  "n": 102,
+  "attacks": 48,
+  "auc": 0.8514660493827161,
+  "attacks_blocked": 24,
+  "benign_blocked": 3,
+  "block": 0.7319765686988831
+ },
+ "Amos 1 mini 0.5B | OCR text | text in pixels": {
+  "n": 42,
+  "attacks": 18,
+  "auc": 0.8101851851851851,
+  "attacks_blocked": 5,
+  "benign_blocked": 3,
+  "block": 0.7319765686988831
+ },
+ "Amos 1 mini 0.5B | OCR text | text in metadata": {
+  "n": 66,
+  "attacks": 30,
+  "auc": 0.8666666666666667,
+  "attacks_blocked": 19,
+  "benign_blocked": 0,
+  "block": 0.7319765686988831
+ },
+ "Amos 1 mini 0.5B | picture | all image items": {
+  "n": 102,
+  "attacks": 48,
+  "auc": 0.7021604938271604,
+  "attacks_blocked": 48,
+  "benign_blocked": 40,
+  "block": 0.7319765686988831
+ },
+ "Amos 1 mini 0.5B | picture | text in pixels": {
+  "n": 42,
+  "attacks": 18,
+  "auc": 0.4768518518518518,
+  "attacks_blocked": 18,
+  "benign_blocked": 21,
+  "block": 0.7319765686988831
+ },
+ "Amos 1 mini 0.5B | picture | text in metadata": {
+  "n": 66,
+  "attacks": 30,
+  "auc": 0.8046296296296296,
+  "attacks_blocked": 30,
+  "benign_blocked": 24,
+  "block": 0.7319765686988831
  }
 }

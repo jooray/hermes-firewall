@@ -21,7 +21,8 @@ GROUPS = {"all image items": lambda r: True,
           "text in pixels": lambda r: r["category"] in PIXEL or r["category"] == "plain_photo",
           "text in metadata": lambda r: r["category"] not in PIXEL}
 out = {}
-for model, tag in {"d1-3B": "d1-3b", "d1-omni-600M": "d1-omni-600m", "RSI-Jev v6.1-VL 4B": "rsi-jev-v6.1-vl-4b"}.items():
+for model, tag in {"d1-3B": "d1-3b", "d1-omni-600M": "d1-omni-600m", "RSI-Jev v6.1-VL 4B": "rsi-jev-v6.1-vl-4b",
+                   "Amos 1 large 27B 4-bit": "amos-large-q4", "Amos 1 medium 9B": "amos-medium", "Amos 1 small 2B": "amos-small", "Amos 1 mini 0.5B": "amos-mini"}.items():
     sd = scores(tag, "dev")
     st = scores(tag + "_img", "test")
     if not sd or not st:
