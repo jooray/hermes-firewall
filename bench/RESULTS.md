@@ -598,3 +598,25 @@ was lost in that crash.
 Image carriers (102 items, 48 attacks), AUC with OCR text vs the picture: medium 0.963 / 0.948, small 0.935 /
 0.917, mini 0.851 / 0.702 (mini with the picture blocks 48/48 attacks and 40 benign). Unlike RSI-Jev, the
 picture never beats OCR. `amos_chart.py` draws the blog chart.
+
+## Vega (vegaml 0.9.0, 2026-10-16)
+
+[Vega](https://github.com/NandhaKishorM/vegaml) is a general decision engine: a frozen Qwen3.5 backbone (0.8B or
+4B) plus a small trained "physics" engine (14M / 31M parameters) that settles on typed answers (choice, score,
+boolean) with calibrated probabilities. It is not a prompt-injection classifier; injection is one of its 43 menu
+tasks. Different request shape from Jev: `Vega.decide(state, questions)`, one read of the text, all questions at
+once. Ran through the official package in its own venv (`decision-tools/Vega/.venv`), torch on Apple MPS (the
+default device; the MLX engine in the docs only replays the engine, the backbone stays torch). Scored by
+`score_vega.py`: the four v1 score questions (`addressed_ai`, `override`, `off_topic_task`, `covert`) plus
+`imperative_to_reader`, probability of the top option, max over 6000-char chunks (6 at most), 0 errors. Not the
+deployed two-question Jev set, so the Vega rows are not strictly comparable to the Amos/Nimble ones.
+
+| Detector | Test AUC | Planted email AUC | Caught @ dev 2% (test FP) | Own thresholds: attacks / planted email / benign blocked | Block, warn | p50 |
+|---|---:|---:|---:|---|---|---:|
+| Vega 4B | 0.872 | 0.919 | 58.7% (2.1%) | 189 / 77 / 3 | 0.64, 0.49 | 3.6 s |
+| Vega 0.8B | 0.712 | 0.737 | 18.9% (6.0%) | 42 / 8 / 10 | 0.11, 0.056 | 1.2 s |
+
+(Totals: 433 attacks, 150 planted email, 285 benign.) Both rank below Nimble 9B (0.927) and Amos medium (0.926).
+The 4B is the slowest small model here (3.6 s, p95 6.1 s) for a lower AUC than Amos small at 0.23 s. Image
+carriers: AUC 0.850 (4B), 0.625 (0.8B), text only; Vega has no image input. With Jev's shipped thresholds the 4B
+blocks 70 of 285 benign items, so it needs refitted thresholds. Per-slice numbers: `results_local_sysone.json`.

@@ -24,7 +24,8 @@ MODELS = {"Jev jev-latest (Venice)": "jev_deployed", "Nimble 9B Q8_0": "ollama_n
           "RSI-Jev v6.1-VL 4B": "rsi-jev-v6.1-vl-4b",
           "d3 27B MLX 4-bit": "d3-27b-q4", "d3-flash 9B MLX 8-bit": "d3-flash-q8", "d3-mini 4.5B MLX": "d3-mini",
           "d3-nano 2.2B MLX": "d3-nano", "d3-lite 0.85B MLX": "d3-lite", "d3-edge 0.6B MLX": "d3-edge",
-          "Amos 1 large 27B MLX 4-bit": "amos-large-q4", "Amos 1 medium 9B MLX": "amos-medium", "Amos 1 small 2B MLX": "amos-small", "Amos 1 mini 0.5B (torch CPU)": "amos-mini"}
+          "Amos 1 large 27B MLX 4-bit": "amos-large-q4", "Amos 1 medium 9B MLX": "amos-medium", "Amos 1 small 2B MLX": "amos-small", "Amos 1 mini 0.5B (torch CPU)": "amos-mini",
+          "Vega 0.8B (torch)": "vega-0.8b", "Vega 4B (torch)": "vega-4b"}
 MODELS = {k: v for k, v in MODELS.items() if scores(v, "test") and scores(v, "dev")}
 dev, test = load("dev"), load("test")
 try:
