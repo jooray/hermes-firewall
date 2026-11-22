@@ -60,7 +60,7 @@ import httpx
 
 log = logging.getLogger("prompt_firewall")
 
-__version__ = "0.6.1"  # keep in step with plugin.yaml
+__version__ = "0.6.2"  # keep in step with plugin.yaml
 
 # Process-level settings: from the environment, read once. The per-profile settings further down
 # (_cfg) default to these and can be overridden per profile in config.yaml.

@@ -1,5 +1,5 @@
 name: prompt-firewall
-version: "0.6.1"
+version: "0.6.2"
 description: "Scan untrusted tool results (web, MCP, email, files, images) for prompt injection before they enter the model's context. Local extraction and OCR, scoring by Jev (Venice Decisions API) or a local Jev-compatible server (Nimble in Ollama, RSI-Jev, d3 via d3-mlx)."
 author: "hermes-firewall contributors"
 kind: standalone
